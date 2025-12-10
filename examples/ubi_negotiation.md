@@ -1,3 +1,14 @@
+# 🗳️ UBI Negotiation Example
+
+> **Proposal:** "Should we implement universal basic income?"  
+> **Rounds:** 2  
+> **Result:** ❌ REJECTED (11-11 tie)
+
+This is a complete transcript of a Revolution negotiation session. All 22 agents participated in deliberation, cross-party debate, and final voting.
+
+---
+
+```
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                                                                              ║
 ║  REVOLUTION                                                                  ║
@@ -2392,3 +2403,4 @@ progressive policy t...
 ║                                                                              ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 
+```
