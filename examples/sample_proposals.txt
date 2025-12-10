@@ -1,0 +1,52 @@
+# Sample Proposals for Revolution
+
+These are example proposals you can submit to the negotiation system:
+
+## Social Issues
+- Should we legalize gay marriage nationwide?
+- Should we legalize recreational marijuana?
+- Should we implement stricter gun control measures?
+- Should abortion remain legal in all states?
+
+## Economic Policy
+- Should we raise the federal minimum wage to $15/hour?
+- Should we implement a universal basic income?
+- Should we increase taxes on billionaires?
+- Should we eliminate student loan debt?
+
+## Healthcare
+- Should we implement universal healthcare (Medicare for All)?
+- Should the government negotiate drug prices with pharmaceutical companies?
+- Should we expand Medicaid in all states?
+
+## Immigration
+- Should we create a pathway to citizenship for undocumented immigrants?
+- Should we build a wall on the southern border?
+- Should we end DACA and deport Dreamers?
+
+## Climate & Environment
+- Should we implement a Green New Deal?
+- Should we ban fracking nationwide?
+- Should we rejoin the Paris Climate Agreement?
+- Should we end fossil fuel subsidies?
+
+## Criminal Justice
+- Should we abolish the death penalty?
+- Should we end qualified immunity for police officers?
+- Should we legalize all drugs and treat addiction as a health issue?
+
+## Foreign Policy
+- Should we increase military spending?
+- Should we withdraw from NATO?
+- Should we maintain sanctions on Russia?
+
+## Education
+- Should we make public college tuition-free?
+- Should we implement universal pre-K?
+- Should we allow school vouchers for private schools?
+
+## Other
+- Should we expand the Supreme Court?
+- Should we abolish the Electoral College?
+- Should we implement term limits for Congress?
+- Should we lower the voting age to 16?
