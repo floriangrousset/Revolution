@@ -65,7 +65,9 @@ async def run_interactive_session(display: NegotiationDisplay):
         if not votes_by_party.get("democrat") and result.get("democrat_votes"):
             votes_by_party["democrat"] = result["democrat_votes"]
 
-        voting_result = determine_final_result(votes_by_party)
+        # The resolution node already applied the debate's passage rule;
+        # recompute only for older result shapes that lack it.
+        voting_result = result.get("voting_result") or determine_final_result(votes_by_party)
 
         display.show_phase("Final Voting Results", "neutral")
         for party in result.get("parties") or list(votes_by_party.keys()):

@@ -1,5 +1,5 @@
 """State type definitions for the negotiation system."""
-from typing import Annotated, TypedDict, Literal, Optional
+from typing import Annotated, Any, TypedDict, Literal, Optional
 from dataclasses import dataclass, field
 import uuid
 
@@ -134,6 +134,14 @@ class NegotiationState(TypedDict, total=False):
     negotiation_round: int
     max_rounds: int
     phase: str
+    # Passage rule for this debate ("majority" / "three_fifths" / "two_thirds").
+    passage_rule: str
+    # The full `src.voting.consensus.VotingResult` computed by the resolution
+    # node, so callers (the web engine, CLI) read the tally off the state
+    # instead of recomputing it with possibly-different rules. Typed as Any
+    # because LangGraph evaluates these annotations at runtime and a real
+    # import here would be circular (consensus imports Vote from this module).
+    voting_result: Optional[Any]
     final_result: Optional[Literal["passed", "rejected", "amended"]]
     amendments_proposed: list[str]
     # Amendment text → ids of the agents whose ballots proposed it. Rebuilt on

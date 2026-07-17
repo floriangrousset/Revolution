@@ -38,6 +38,12 @@ PHASE_LABEL = {
     "cross_party_debate": "Cross-Party Debate",
 }
 
+_RULE_LABEL = {
+    "majority": "Simple majority",
+    "three_fifths": "3/5 cloture",
+    "two_thirds": "2/3 supermajority",
+}
+
 
 # ---------------------------------------------------------------------------
 # Markdown
@@ -60,8 +66,12 @@ def to_markdown(
     lines.append(
         f"**Model:** `{cfg.get('model', '?')}` · "
         f"**Temperature:** {cfg.get('temperature', '?')} · "
-        f"**Rounds:** {cfg.get('max_rounds', '?')}"
+        f"**Rounds:** {cfg.get('max_rounds', '?')} · "
+        f"**Passage rule:** {_RULE_LABEL.get(cfg.get('passage_rule', 'majority'), cfg.get('passage_rule'))}"
     )
+    voting = debate.get("voting") or {}
+    if voting.get("required"):
+        lines.append(f"**Required to pass:** {voting['required']} support votes")
     if debate.get("created_at"):
         lines.append(f"**Created:** {debate['created_at']}")
     if debate.get("completed_at"):
@@ -280,7 +290,11 @@ def to_pdf(
         + f" · Model <font name='Helvetica-Bold'>{cfg.get('model', '?')}</font>"
         f" · Temperature {cfg.get('temperature', '?')}"
         f" · {cfg.get('max_rounds', '?')} round(s)"
+        f" · {_RULE_LABEL.get(cfg.get('passage_rule', 'majority'), cfg.get('passage_rule'))}"
     )
+    voting = debate.get("voting") or {}
+    if voting.get("required"):
+        summary += f" · {voting['required']} needed to pass"
     flow.append(Paragraph(summary, styles["body"]))
     flow.append(Spacer(1, 8))
 

@@ -253,6 +253,9 @@ export function Results({ nav, param }: ResultsProps) {
               <span className="mono" style={{ fontSize: 12, color: "var(--txt-faint)" }}>
                 {new Date(debate.created_at).toLocaleDateString()} · {debate.config.max_rounds} round
                 {debate.config.max_rounds > 1 ? "s" : ""} · {debate.config.model}
+                {debate.config.passage_rule === "three_fifths" && " · 3⁄5 cloture rule"}
+                {debate.config.passage_rule === "two_thirds" && " · 2⁄3 supermajority rule"}
+                {debate.voting && debate.voting.required > 0 && ` · ${debate.voting.required} to pass`}
               </span>
             </div>
             {editingTitle ? (

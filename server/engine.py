@@ -14,7 +14,7 @@ from typing import Any
 
 from src.graphs.main_graph import run_negotiation
 from src.state.types import AgentMessage, Vote
-from src.voting.consensus import determine_final_result
+from src.voting.consensus import VotingRules, determine_final_result
 
 from . import db
 from .events import Event, broadcaster
@@ -230,9 +230,10 @@ def create_debate_record(
     model: str | None = None,
     temperature: float | None = None,
     parties: list[str] | None = None,
+    passage_rule: str | None = None,
 ) -> dict[str, Any]:
     """Create the on-disk debate record (status=pending). Returns the record."""
-    from src.config import get_default_model, get_default_temperature
+    from src.config import get_default_model, get_default_passage_rule, get_default_temperature
 
     debate_id = f"deb_{uuid.uuid4().hex[:8]}"
     resolved_model = model or get_default_model()
@@ -248,6 +249,7 @@ def create_debate_record(
             "model": resolved_model,
             "temperature": resolved_temp,
             "parties": parties or ["democrat", "republican"],
+            "passage_rule": passage_rule or get_default_passage_rule(),
         },
         "status": "pending",
         "result": None,
@@ -352,6 +354,7 @@ async def run_debate(debate_id: str) -> None:
             model=cfg.get("model"),
             temperature=cfg.get("temperature"),
             parties=cfg.get("parties"),
+            passage_rule=cfg.get("passage_rule"),
         )
     except Exception as e:
         log.exception("debate %s failed", debate_id)
@@ -372,7 +375,13 @@ async def run_debate(debate_id: str) -> None:
     if not votes_by_party.get("democrat") and result.get("democrat_votes"):
         votes_by_party["democrat"] = list(result["democrat_votes"])
 
-    voting = determine_final_result(votes_by_party)
+    # Prefer the VotingResult the resolution node already computed (it applied
+    # the debate's passage rule); recompute only if an older engine state
+    # didn't carry one.
+    voting = result.get("voting_result") or determine_final_result(
+        votes_by_party,
+        rules=VotingRules(rule=cfg.get("passage_rule") or "majority"),
+    )
     final_status = "passed" if voting.passed else "rejected"
     if result.get("final_result") == "amended":
         final_status = "amended"
@@ -419,6 +428,12 @@ async def run_debate(debate_id: str) -> None:
     record["status"] = final_status
     record["result"] = final_status
     record["tally"] = tally
+    record["voting"] = {
+        "rule": voting.rule,
+        "required": voting.required,
+        "margin": voting.margin,
+        "bipartisan": voting.bipartisan,
+    }
     record["completed_at"] = _now()
     record["duration_s"] = duration
     _atomic_write_json(_debate_dir(debate_id) / "debate.json", record)

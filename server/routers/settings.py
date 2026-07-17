@@ -19,6 +19,7 @@ import anthropic
 from fastapi import APIRouter, HTTPException
 
 from src.config import DEFAULT_REFERENCE_LISTS, get_settings_store
+from src.voting.consensus import PASSAGE_RULES
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
@@ -100,6 +101,37 @@ def _validate_patch(patch: dict[str, Any]) -> None:
                             f"{sorted(missing)}"
                         ),
                     },
+                )
+
+    if "voting" in patch:
+        voting = patch["voting"]
+        if not isinstance(voting, dict):
+            raise HTTPException(
+                status_code=422,
+                detail={"code": "invalid", "message": "voting must be an object"},
+            )
+        rule = voting.get("passage_rule")
+        if rule is not None and rule not in PASSAGE_RULES:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "code": "invalid",
+                    "message": f"voting.passage_rule must be one of {', '.join(PASSAGE_RULES)}",
+                },
+            )
+        quorum = voting.get("quorum")
+        if quorum is not None:
+            try:
+                q = float(quorum)
+            except (TypeError, ValueError):
+                raise HTTPException(
+                    status_code=422,
+                    detail={"code": "invalid", "message": "voting.quorum must be a number or null"},
+                )
+            if not 0 < q <= 1:
+                raise HTTPException(
+                    status_code=422,
+                    detail={"code": "invalid", "message": "voting.quorum must be in (0, 1]"},
                 )
 
     if "reference_lists" in patch:

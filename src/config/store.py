@@ -40,6 +40,7 @@ DEFAULT_DATA_DIR = REPO_ROOT / "data"
 
 DEFAULT_MODEL = "claude-sonnet-4-6"
 DEFAULT_TEMPERATURE = 0.8
+DEFAULT_PASSAGE_RULE = "majority"
 
 DEFAULT_REFERENCE_LISTS: dict[str, list[str]] = {
     "roles": ["party_head", "advisor", "assistant"],
@@ -81,6 +82,7 @@ def DEFAULTS() -> dict[str, Any]:
         "default_temperature": DEFAULT_TEMPERATURE,
         "system_prompts": _default_prompts(),
         "reference_lists": dict(DEFAULT_REFERENCE_LISTS),
+        "voting": {"passage_rule": DEFAULT_PASSAGE_RULE, "quorum": None},
         "updated_at": _now(),
     }
 
@@ -208,7 +210,7 @@ class SettingsStore:
                 if (
                     isinstance(value, dict)
                     and isinstance(current.get(key), dict)
-                    and key in {"system_prompts", "reference_lists"}
+                    and key in {"system_prompts", "reference_lists", "voting"}
                 ):
                     current[key] = {**current[key], **value}
                 else:
@@ -302,3 +304,11 @@ def get_default_temperature() -> float:
         return float(raw)
     except (TypeError, ValueError):
         return DEFAULT_TEMPERATURE
+
+
+def get_default_passage_rule() -> str:
+    """Default passage rule for debates that don't pin one explicitly."""
+    from src.voting.consensus import PASSAGE_RULES
+
+    raw = get_settings_store().get("voting.passage_rule", DEFAULT_PASSAGE_RULE)
+    return raw if raw in PASSAGE_RULES else DEFAULT_PASSAGE_RULE

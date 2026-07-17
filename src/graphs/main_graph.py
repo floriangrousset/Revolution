@@ -5,7 +5,7 @@ from langgraph.graph import StateGraph, START, END
 from ..state.types import NegotiationState, Proposal, AgentMessage, Vote
 from .party_graph import run_party_deliberation
 from .nodes import cross_party_debate, conduct_voting, initial_voting
-from ..voting.consensus import determine_final_result
+from ..voting.consensus import VotingRules, determine_final_result
 
 # Default participating parties for the CLI and any test caller that hasn't
 # migrated to passing `parties=...` explicitly.
@@ -138,21 +138,24 @@ def build_main_graph(
         if not votes_by_party.get("democrat") and state.get("democrat_votes"):
             votes_by_party["democrat"] = list(state["democrat_votes"])
 
-        result = determine_final_result(votes_by_party)
+        rules = VotingRules(rule=state.get("passage_rule") or "majority")
+        result = determine_final_result(votes_by_party, rules=rules)
         final_result = "passed" if result.passed else "rejected"
 
         if display_callback:
+            rule_note = "" if result.rule == "majority" else f" [{result.rule}, {result.required} needed]"
             display_callback(AgentMessage(
                 agent_id="system",
                 agent_name="System",
                 party="neutral",
                 role="system",
-                content=f"FINAL RESULT: {final_result.upper()} ({result.margin})",
+                content=f"FINAL RESULT: {final_result.upper()} ({result.margin}){rule_note}",
                 phase="resolution"
             ))
 
         return {
             "final_result": final_result,
+            "voting_result": result,
             "phase": "resolution"
         }
 
@@ -211,6 +214,7 @@ async def run_negotiation(
     model: Optional[str] = None,
     temperature: Optional[float] = None,
     parties: Optional[list[str]] = None,
+    passage_rule: Optional[str] = None,
 ) -> NegotiationState:
     """Run a full negotiation on a proposal.
 
@@ -222,11 +226,14 @@ async def run_negotiation(
         temperature: Optional temperature in [0, 1] to override the engine default.
         parties: Optional explicit party-id list, in seating order. Defaults to
             ["democrat", "republican"] for back-compat with the CLI and tests.
+        passage_rule: "majority" (default), "three_fifths", or "two_thirds".
+            Falls back to the settings-store default when omitted.
 
     Returns:
         Final NegotiationState with results
     """
     from .nodes import set_model_overrides
+    from ..config import get_default_passage_rule
     set_model_overrides(model=model, temperature=temperature)
 
     party_ids = list(parties) if parties else list(DEFAULT_PARTIES)
@@ -248,6 +255,8 @@ async def run_negotiation(
         "negotiation_round": 0,
         "max_rounds": max_rounds,
         "phase": "proposal_submission",
+        "passage_rule": passage_rule or get_default_passage_rule(),
+        "voting_result": None,
         "final_result": None,
         "amendments_proposed": [],
         "amendment_sponsors": {},

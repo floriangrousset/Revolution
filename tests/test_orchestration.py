@@ -136,6 +136,21 @@ async def test_negotiation_produces_final_result(stub_model):
     assert len(result["democrat_votes"]) == 11
 
 
+async def test_passage_rule_flows_to_voting_result(stub_model):
+    """A per-debate passage_rule must reach the resolution node's tally."""
+    result = await run_negotiation(
+        proposal_text="Test proposal.",
+        max_rounds=1,
+        passage_rule="two_thirds",
+    )
+    voting = result.get("voting_result")
+    assert voting is not None
+    assert voting.rule == "two_thirds"
+    # 22 stubbed SUPPORT votes clear a 2/3 bar as well.
+    assert voting.passed
+    assert result["passage_rule"] == "two_thirds"
+
+
 async def test_after_debate_decision_routes_continue_then_vote(stub_model):
     """The conditional edge must take 'continue' on round 1 of 2, then 'vote'
     on round 2 of 2. We assert this indirectly via the call sequence: voting

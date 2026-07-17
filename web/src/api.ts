@@ -21,10 +21,13 @@ export interface DebateDetail {
     model: string;
     temperature: number;
     parties: string[];
+    passage_rule?: "majority" | "three_fifths" | "two_thirds";
   };
   status: DebateSummary["status"];
   result: string | null;
   tally: { support: number; oppose: number; abstain: number };
+  /** Written at completion: the rule applied and the support needed to pass. */
+  voting?: { rule: string; required: number; margin: string; bipartisan: boolean };
   created_at: string;
   completed_at: string | null;
   duration_s?: number;
@@ -40,6 +43,8 @@ export interface CreateDebateRequest {
   /** Optional; falls back to Settings.default_temperature on the server. */
   temperature?: number;
   parties?: string[];
+  /** Optional; falls back to the settings-store default (majority). */
+  passage_rule?: "majority" | "three_fifths" | "two_thirds";
 }
 
 export interface CreateDebateResponse {
