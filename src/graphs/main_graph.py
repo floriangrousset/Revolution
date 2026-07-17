@@ -139,7 +139,11 @@ def build_main_graph(
             votes_by_party["democrat"] = list(state["democrat_votes"])
 
         rules = VotingRules(rule=state.get("passage_rule") or "majority")
-        result = determine_final_result(votes_by_party, rules=rules)
+        result = determine_final_result(
+            votes_by_party,
+            rules=rules,
+            seat_weights=state.get("seat_config") or None,
+        )
         final_result = "passed" if result.passed else "rejected"
 
         if display_callback:
@@ -215,6 +219,7 @@ async def run_negotiation(
     temperature: Optional[float] = None,
     parties: Optional[list[str]] = None,
     passage_rule: Optional[str] = None,
+    seat_config: Optional[dict[str, int]] = None,
 ) -> NegotiationState:
     """Run a full negotiation on a proposal.
 
@@ -228,6 +233,8 @@ async def run_negotiation(
             ["democrat", "republican"] for back-compat with the CLI and tests.
         passage_rule: "majority" (default), "three_fifths", or "two_thirds".
             Falls back to the settings-store default when omitted.
+        seat_config: Optional party id → seat count map for seat-weighted
+            voting. Omitted/empty = one agent, one vote (unweighted).
 
     Returns:
         Final NegotiationState with results
@@ -256,6 +263,7 @@ async def run_negotiation(
         "max_rounds": max_rounds,
         "phase": "proposal_submission",
         "passage_rule": passage_rule or get_default_passage_rule(),
+        "seat_config": dict(seat_config) if seat_config else {},
         "voting_result": None,
         "final_result": None,
         "amendments_proposed": [],

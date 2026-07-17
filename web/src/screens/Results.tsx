@@ -255,7 +255,10 @@ export function Results({ nav, param }: ResultsProps) {
                 {debate.config.max_rounds > 1 ? "s" : ""} · {debate.config.model}
                 {debate.config.passage_rule === "three_fifths" && " · 3⁄5 cloture rule"}
                 {debate.config.passage_rule === "two_thirds" && " · 2⁄3 supermajority rule"}
+                {debate.config.use_seat_weights && " · seat-weighted"}
                 {debate.voting && debate.voting.required > 0 && ` · ${debate.voting.required} to pass`}
+                {debate.voting?.weighted &&
+                  ` · weighted ${debate.voting.weighted_support ?? 0}–${debate.voting.weighted_oppose ?? 0}`}
               </span>
             </div>
             {editingTitle ? (
@@ -1956,6 +1959,15 @@ function VoteCard({ v }: { v: VoteRecord }) {
             {ROLE_META[p.role]?.label || p.role}
           </div>
         </div>
+        {v.weight != null && (
+          <span
+            className="mono"
+            title="Seat weight this ballot carried"
+            style={{ fontSize: 11, color: "var(--txt-faint)" }}
+          >
+            ×{v.weight.toFixed(1)}
+          </span>
+        )}
         <VoteTag vote={v.vote} sm />
       </div>
       {v.reasoning && (

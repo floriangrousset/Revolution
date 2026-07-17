@@ -151,6 +151,21 @@ async def test_passage_rule_flows_to_voting_result(stub_model):
     assert result["passage_rule"] == "two_thirds"
 
 
+async def test_seat_config_flows_to_voting_result(stub_model):
+    """A per-debate seat snapshot must weight the resolution tally."""
+    result = await run_negotiation(
+        proposal_text="Test proposal.",
+        max_rounds=1,
+        seat_config={"republican": 218, "democrat": 212},
+    )
+    voting = result.get("voting_result")
+    assert voting is not None
+    assert voting.weighted
+    # All 22 stubbed agents SUPPORT → weighted support is the full 430 seats.
+    assert voting.weighted_support == 430.0
+    assert voting.by_party["republican"]["support"] == 11  # raw roll call intact
+
+
 async def test_after_debate_decision_routes_continue_then_vote(stub_model):
     """The conditional edge must take 'continue' on round 1 of 2, then 'vote'
     on round 2 of 2. We assert this indirectly via the call sequence: voting

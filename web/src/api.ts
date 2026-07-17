@@ -22,12 +22,23 @@ export interface DebateDetail {
     temperature: number;
     parties: string[];
     passage_rule?: "majority" | "three_fifths" | "two_thirds";
+    use_seat_weights?: boolean;
+    /** Party id → configured seats, snapshotted at debate creation. */
+    seat_config?: Record<string, number> | null;
   };
   status: DebateSummary["status"];
   result: string | null;
   tally: { support: number; oppose: number; abstain: number };
   /** Written at completion: the rule applied and the support needed to pass. */
-  voting?: { rule: string; required: number; margin: string; bipartisan: boolean };
+  voting?: {
+    rule: string;
+    required: number;
+    margin: string;
+    bipartisan: boolean;
+    weighted?: boolean;
+    weighted_support?: number;
+    weighted_oppose?: number;
+  };
   created_at: string;
   completed_at: string | null;
   duration_s?: number;
@@ -45,6 +56,8 @@ export interface CreateDebateRequest {
   parties?: string[];
   /** Optional; falls back to the settings-store default (majority). */
   passage_rule?: "majority" | "three_fifths" | "two_thirds";
+  /** Weight each party's ballots by its configured voting_seats. */
+  use_seat_weights?: boolean;
 }
 
 export interface CreateDebateResponse {

@@ -68,9 +68,10 @@ _DEFAULT_PARTIES: list[dict[str, Any]] = [
         ],
         "national_committee_chair": "Jaime Harrison (DNC)",
         "electoral_strength": (
-            "Majority caucus in the U.S. Senate (51 seats) and minority in the U.S. "
-            "House. Holds 23 governorships and trifecta control in 17 states."
+            "Minority caucus in both chambers of the 119th Congress: 45 senators "
+            "plus 2 caucusing independents, and 212 House members as of July 2026."
         ),
+        "voting_seats": 212,
         "created_at": "2026-06-15T00:00:00+00:00",
     },
     {
@@ -111,9 +112,10 @@ _DEFAULT_PARTIES: list[dict[str, Any]] = [
         ],
         "national_committee_chair": "Michael Whatley (RNC)",
         "electoral_strength": (
-            "Majority caucus in the U.S. House and minority in the U.S. Senate. "
-            "Holds 27 governorships and trifecta control in 23 states."
+            "Majority caucus in both chambers of the 119th Congress: 53 senators "
+            "and 218 House members as of July 2026."
         ),
+        "voting_seats": 218,
         "created_at": "2026-06-15T00:00:00+00:00",
     },
 ]
@@ -413,6 +415,10 @@ _PARTY_FIELD_DEFAULTS: dict[str, Any] = {
     "national_committee_chair": "",
     "electoral_strength": "",
     "color": "#C2A14D",
+    # Configured seat count used for seat-weighted voting (real-chamber
+    # weight). None = party votes unweighted. Distinct from the derived
+    # `seats` API field, which counts persona files.
+    "voting_seats": None,
     "created_at": None,
 }
 
@@ -746,6 +752,10 @@ def save_party(party: dict[str, Any]) -> dict[str, Any]:
         raise ValueError(
             f"party id {pid!r} must be alphanumeric with underscores only"
         )
+    if party.get("voting_seats") is not None:
+        seats_value = party["voting_seats"]
+        if not isinstance(seats_value, int) or isinstance(seats_value, bool) or seats_value < 0:
+            raise ValueError("voting_seats must be a non-negative integer or null")
     parties = _read_parties_file()
     existing = next((p for p in parties if p["id"] == pid), None)
     payload: dict[str, Any] = dict(existing or {})

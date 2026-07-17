@@ -136,6 +136,9 @@ class NegotiationState(TypedDict, total=False):
     phase: str
     # Passage rule for this debate ("majority" / "three_fifths" / "two_thirds").
     passage_rule: str
+    # Optional seat-weighting snapshot: party id → configured seat count,
+    # captured when the debate was created. Empty dict = unweighted.
+    seat_config: dict[str, int]
     # The full `src.voting.consensus.VotingResult` computed by the resolution
     # node, so callers (the web engine, CLI) read the tally off the state
     # instead of recomputing it with possibly-different rules. Typed as Any

@@ -206,10 +206,12 @@ def _serialize_message(msg: AgentMessage, *, turn_index: int) -> dict[str, Any]:
     }
 
 
-def _serialize_vote(vote: Vote, *, previous: dict[str, str]) -> dict[str, Any]:
+def _serialize_vote(
+    vote: Vote, *, previous: dict[str, str], weight: float | None = None
+) -> dict[str, Any]:
     prior = previous.get(vote.agent_id)
     changed = prior is not None and prior != vote.vote
-    return {
+    payload = {
         "agent": vote.agent_id,
         "name": vote.agent_name,
         "party": vote.party,
@@ -220,6 +222,9 @@ def _serialize_vote(vote: Vote, *, previous: dict[str, str]) -> dict[str, Any]:
         "from": prior if changed else None,
         "amendments": list(vote.amendments or []),
     }
+    if weight is not None:
+        payload["weight"] = weight
+    return payload
 
 
 def create_debate_record(
@@ -231,6 +236,7 @@ def create_debate_record(
     temperature: float | None = None,
     parties: list[str] | None = None,
     passage_rule: str | None = None,
+    use_seat_weights: bool = False,
 ) -> dict[str, Any]:
     """Create the on-disk debate record (status=pending). Returns the record."""
     from src.config import get_default_model, get_default_passage_rule, get_default_temperature
@@ -240,6 +246,17 @@ def create_debate_record(
     resolved_temp = temperature if temperature is not None else get_default_temperature()
     created_at = _now()
     title_resolved = title or _summarize_title(proposal)
+    resolved_parties = parties or ["democrat", "republican"]
+    # Snapshot the registry's configured seat counts at creation time so the
+    # debate stays reproducible even if the registry changes later.
+    seat_config: dict[str, int] | None = None
+    if use_seat_weights:
+        registry = {p["id"]: p for p in db.list_parties()}
+        seat_config = {
+            pid: registry[pid]["voting_seats"]
+            for pid in resolved_parties
+            if registry.get(pid, {}).get("voting_seats")
+        }
     record: dict[str, Any] = {
         "id": debate_id,
         "title": title_resolved,
@@ -248,8 +265,10 @@ def create_debate_record(
             "max_rounds": max_rounds,
             "model": resolved_model,
             "temperature": resolved_temp,
-            "parties": parties or ["democrat", "republican"],
+            "parties": resolved_parties,
             "passage_rule": passage_rule or get_default_passage_rule(),
+            "use_seat_weights": use_seat_weights,
+            "seat_config": seat_config,
         },
         "status": "pending",
         "result": None,
@@ -355,6 +374,7 @@ async def run_debate(debate_id: str) -> None:
             temperature=cfg.get("temperature"),
             parties=cfg.get("parties"),
             passage_rule=cfg.get("passage_rule"),
+            seat_config=cfg.get("seat_config"),
         )
     except Exception as e:
         log.exception("debate %s failed", debate_id)
@@ -381,6 +401,7 @@ async def run_debate(debate_id: str) -> None:
     voting = result.get("voting_result") or determine_final_result(
         votes_by_party,
         rules=VotingRules(rule=cfg.get("passage_rule") or "majority"),
+        seat_weights=cfg.get("seat_config"),
     )
     final_status = "passed" if voting.passed else "rejected"
     if result.get("final_result") == "amended":
@@ -393,8 +414,11 @@ async def run_debate(debate_id: str) -> None:
     votes_payload: list[dict[str, Any]] = []
     party_order = cfg.get("parties") or list(votes_by_party.keys())
     for party in party_order:
+        party_weight = voting.weights_by_party.get(party) if voting.weighted else None
         for v in votes_by_party.get(party, []):
-            votes_payload.append(_serialize_vote(v, previous=first_votes))
+            votes_payload.append(
+                _serialize_vote(v, previous=first_votes, weight=party_weight)
+            )
     _atomic_write_json(
         _debate_dir(debate_id) / "votes.json",
         {"votes": votes_payload},
@@ -433,6 +457,9 @@ async def run_debate(debate_id: str) -> None:
         "required": voting.required,
         "margin": voting.margin,
         "bipartisan": voting.bipartisan,
+        "weighted": voting.weighted,
+        "weighted_support": voting.weighted_support,
+        "weighted_oppose": voting.weighted_oppose,
     }
     record["completed_at"] = _now()
     record["duration_s"] = duration

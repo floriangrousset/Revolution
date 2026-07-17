@@ -118,6 +118,73 @@ def test_bipartisan_requires_two_supporting_parties():
     assert dual.bipartisan
 
 
+def test_seat_weights_none_is_unweighted():
+    votes = {"a": _votes("a", support=6, oppose=5)}
+    plain = determine_final_result(votes)
+    explicit = determine_final_result(votes, seat_weights=None)
+    assert plain.passed == explicit.passed
+    assert not explicit.weighted
+    assert explicit.margin == "6-5"
+
+
+def test_seat_weights_flip_head_count_tie():
+    # 11-11 by heads is a dead tie, but 218 R seats vs 212 D seats break it.
+    votes = {
+        "republican": _votes("republican", support=11),
+        "democrat": _votes("democrat", oppose=11),
+    }
+    unweighted = determine_final_result(votes)
+    weighted = determine_final_result(
+        votes, seat_weights={"republican": 218, "democrat": 212}
+    )
+    assert not unweighted.passed
+    assert weighted.passed
+    assert weighted.weighted
+    assert weighted.weighted_support == 218.0
+    assert weighted.weighted_oppose == 212.0
+    assert weighted.margin == "218-212 weighted (raw 11-11)"
+    assert weighted.weights_by_party["republican"] == 218 / 11
+
+
+def test_seat_weights_exact_fractions_with_two_thirds():
+    # 8 of 11 GOP ballots support with 218 seats; all 11 Dem ballots oppose
+    # with 212 seats. Weighted support = 8 * 218/11; exact math decides 2/3.
+    votes = {
+        "republican": _votes("republican", support=8, oppose=3),
+        "democrat": _votes("democrat", oppose=11),
+    }
+    result = determine_final_result(
+        votes,
+        rules=VotingRules(rule="two_thirds"),
+        seat_weights={"republican": 218, "democrat": 212},
+    )
+    # support = 1744/11 ≈ 158.5 of decisive 430 → well under 2/3.
+    assert not result.passed
+    assert result.rule == "two_thirds"
+
+
+def test_seat_weights_party_without_config_votes_unweighted():
+    votes = {
+        "republican": _votes("republican", support=11),
+        "green": _votes("green", oppose=3),
+    }
+    result = determine_final_result(votes, seat_weights={"republican": 218})
+    assert result.weights_by_party["green"] == 1.0
+    assert result.weighted_support == 218.0
+    assert result.weighted_oppose == 3.0
+
+
+def test_bipartisan_uses_raw_counts_when_weighted():
+    votes = {
+        "republican": _votes("republican", support=11),
+        "democrat": _votes("democrat", support=1, oppose=10),
+    }
+    result = determine_final_result(
+        votes, seat_weights={"republican": 218, "democrat": 212}
+    )
+    assert result.bipartisan
+
+
 def test_legacy_two_party_scalars_still_populated():
     result = determine_final_result(
         {

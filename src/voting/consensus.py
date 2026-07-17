@@ -1,6 +1,7 @@
 """Voting and consensus logic."""
 import math
 from dataclasses import dataclass, field
+from fractions import Fraction
 
 from ..state.types import Vote
 
@@ -22,9 +23,9 @@ class VotingRules:
     quorum: float | None = None
 
 
-def _rule_passes(rule: str, support: int, oppose: int) -> bool:
-    """Integer-only passage test — no float thresholds (2/3 of 435 must not
-    fall to rounding)."""
+def _rule_passes(rule: str, support: "int | Fraction", oppose: "int | Fraction") -> bool:
+    """Exact-arithmetic passage test — int or Fraction, never float thresholds
+    (2/3 of 435 must not fall to rounding)."""
     decisive = support + oppose
     if decisive <= 0:
         return False
@@ -35,15 +36,15 @@ def _rule_passes(rule: str, support: int, oppose: int) -> bool:
     return support > oppose  # simple majority
 
 
-def _required_support(rule: str, decisive: int) -> int:
-    """Minimum support votes needed to pass, given the decisive total."""
+def _required_support(rule: str, decisive: "int | Fraction") -> int:
+    """Minimum support (votes, or weighted seats) needed to pass."""
     if decisive <= 0:
         return 0
     if rule == "three_fifths":
-        return -(-3 * decisive // 5)  # ceil(3d/5)
+        return math.ceil(Fraction(3, 5) * decisive)
     if rule == "two_thirds":
-        return -(-2 * decisive // 3)  # ceil(2d/3)
-    return decisive // 2 + 1
+        return math.ceil(Fraction(2, 3) * decisive)
+    return math.floor(Fraction(decisive) / 2) + 1
 
 
 @dataclass
@@ -69,9 +70,18 @@ class VotingResult:
     margin: str
     by_party: dict[str, dict[str, int]] = field(default_factory=dict)
     # Passage rule applied ("majority" / "three_fifths" / "two_thirds") and
-    # the support count that was needed to pass under it.
+    # the support count that was needed to pass under it. When seat weighting
+    # is active, `required` is expressed in weighted-seat units.
     rule: str = "majority"
     required: int = 0
+    # Seat weighting. `weights_by_party` is the per-VOTE weight applied to
+    # each party's ballots (seats / ballots cast); the raw head-counts stay
+    # in `by_party` so the roll call remains meaningful.
+    weighted: bool = False
+    weighted_support: float = 0.0
+    weighted_oppose: float = 0.0
+    weighted_abstain: float = 0.0
+    weights_by_party: dict[str, float] = field(default_factory=dict)
 
     def __str__(self) -> str:
         status = "PASSED" if self.passed else "REJECTED"
@@ -94,11 +104,18 @@ def calculate_party_result(votes: list[Vote]) -> dict[str, int]:
     return result
 
 
+def _fmt_weight(value: Fraction) -> str:
+    """Render a weighted tally compactly: integers without decimals."""
+    f = float(value)
+    return str(int(f)) if f.is_integer() else f"{f:.1f}"
+
+
 def determine_final_result(
     votes_by_party: dict[str, list[Vote]],
     threshold: float = 0.5,
     *,
     rules: VotingRules | None = None,
+    seat_weights: dict[str, int] | None = None,
 ) -> VotingResult:
     """Determine if the proposal passes across all parties.
 
@@ -108,6 +125,11 @@ def determine_final_result(
             given and the value differs from the 0.5 default (deprecated path).
         rules: Passage rules to apply. When omitted, defaults to a simple
             majority — bit-for-bit the pre-rules behavior.
+        seat_weights: Optional real-chamber seat counts per party id. Each
+            ballot from a party then carries weight `seats / ballots_cast`
+            (exact rational math), so party strength reflects configured
+            seats rather than persona count. Parties absent from the map
+            vote with weight 1.
 
     Returns:
         VotingResult with full breakdown. Per-party scalars on the result are
@@ -125,6 +147,31 @@ def determine_final_result(
     decisive = total_support + total_oppose
     total_votes = decisive + total_abstain
 
+    # Per-vote weights (exact fractions). Weight 1 unless the party has a
+    # configured seat count and actually cast ballots.
+    use_weights = bool(seat_weights)
+    per_vote_weight: dict[str, Fraction] = {}
+    if use_weights and seat_weights is not None:
+        for party, votes in votes_by_party.items():
+            seats = seat_weights.get(party)
+            if seats and votes:
+                per_vote_weight[party] = Fraction(seats, len(votes))
+            else:
+                per_vote_weight[party] = Fraction(1)
+    else:
+        per_vote_weight = {party: Fraction(1) for party in votes_by_party}
+
+    w_support = sum(
+        (per_vote_weight[p] * c["support"] for p, c in by_party.items()), Fraction(0)
+    )
+    w_oppose = sum(
+        (per_vote_weight[p] * c["oppose"] for p, c in by_party.items()), Fraction(0)
+    )
+    w_abstain = sum(
+        (per_vote_weight[p] * c["abstain"] for p, c in by_party.items()), Fraction(0)
+    )
+    w_decisive = w_support + w_oppose
+
     quorum_failed = False
     if rules is None and threshold != 0.5:
         # Deprecated float-threshold path, kept for signature back-compat.
@@ -134,8 +181,13 @@ def determine_final_result(
     else:
         active = rules or VotingRules()
         rule_name = active.rule
-        passed = _rule_passes(active.rule, total_support, total_oppose)
-        required = _required_support(active.rule, decisive)
+        if use_weights:
+            passed = _rule_passes(active.rule, w_support, w_oppose)
+            required = _required_support(active.rule, w_decisive)
+        else:
+            passed = _rule_passes(active.rule, total_support, total_oppose)
+            required = _required_support(active.rule, decisive)
+        # Quorum counts bodies in the room, not seat weight.
         if active.quorum is not None and total_votes > 0:
             quorum_failed = decisive < math.ceil(active.quorum * total_votes)
             if quorum_failed:
@@ -143,10 +195,15 @@ def determine_final_result(
 
     # Bipartisan = at least two distinct parties contributed at least one
     # support vote each. Generalizes the old D+R definition to N parties.
+    # Always computed from raw head-counts, never weighted.
     supporting_parties = [p for p, counts in by_party.items() if counts["support"] > 0]
     bipartisan = len(supporting_parties) >= 2
 
-    margin = f"{total_support}-{total_oppose}"
+    if use_weights:
+        margin = f"{_fmt_weight(w_support)}-{_fmt_weight(w_oppose)} weighted"
+        margin += f" (raw {total_support}-{total_oppose})"
+    else:
+        margin = f"{total_support}-{total_oppose}"
     if total_abstain > 0:
         margin += f" ({total_abstain} abstention{'s' if total_abstain > 1 else ''})"
     if quorum_failed:
@@ -171,6 +228,11 @@ def determine_final_result(
         by_party=by_party,
         rule=rule_name,
         required=required,
+        weighted=use_weights,
+        weighted_support=float(w_support),
+        weighted_oppose=float(w_oppose),
+        weighted_abstain=float(w_abstain),
+        weights_by_party={p: float(w) for p, w in per_vote_weight.items()},
     )
 
 

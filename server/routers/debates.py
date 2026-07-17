@@ -76,6 +76,7 @@ async def create_debate(body: dict[str, Any], background_tasks: BackgroundTasks)
         temperature=body.get("temperature"),
         parties=parties,
         passage_rule=passage_rule,
+        use_seat_weights=bool(body.get("use_seat_weights")),
     )
 
     # Kick off the debate as a fire-and-forget asyncio task. This keeps the

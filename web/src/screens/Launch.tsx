@@ -30,6 +30,7 @@ export function Launch({ nav }: LaunchProps) {
   const [rounds, setRounds] = useState(2);
   const [temp, setTemp] = useState(0.8);
   const [passageRule, setPassageRule] = useState<"majority" | "three_fifths" | "two_thirds">("majority");
+  const [seatWeights, setSeatWeights] = useState(false);
   const [parties, setParties] = useState<Record<string, boolean>>({
     democrat: true,
     republican: true,
@@ -69,6 +70,7 @@ export function Launch({ nav }: LaunchProps) {
         temperature: temp,
         parties: chosenParties,
         passage_rule: passageRule,
+        use_seat_weights: seatWeights,
       });
       nav("results", resp.id);
     } catch (e) {
@@ -242,6 +244,32 @@ export function Launch({ nav }: LaunchProps) {
                   : passageRule === "three_fifths"
                     ? "Modeled on Senate cloture — 3⁄5 of decisive votes must support."
                     : "Modeled on veto-override votes — 2⁄3 of decisive votes must support."}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  cursor: "pointer",
+                  fontSize: 13.5,
+                  fontWeight: 600,
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={seatWeights}
+                  onChange={(e) => setSeatWeights(e.target.checked)}
+                  style={{ accentColor: T.gold, width: 15, height: 15 }}
+                />
+                Seat-weighted voting
+              </label>
+              <div style={{ fontSize: 12, color: "var(--txt-faint)", marginTop: 8, paddingLeft: 25 }}>
+                Weight each caucus's ballots by its real chamber strength (the party's
+                configured seat count) instead of one agent, one vote. Parties without a
+                configured seat count vote unweighted.
               </div>
             </div>
 
