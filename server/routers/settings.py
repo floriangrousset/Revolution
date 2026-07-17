@@ -39,6 +39,7 @@ _REQUIRED_PLACEHOLDERS: dict[str, set[str]] = {
     "SYNTHESIS_PROMPT": {"party"},
     "DEBATE_OPENING_PROMPT": {"agent_name", "agent_title", "party"},
     "DEBATE_REBUTTAL_PROMPT": {"agent_name", "agent_title", "party"},
+    "AMENDMENT_MARKUP_PROMPT": {"proposal_description", "amendment_text"},
 }
 
 _KNOWN_REFERENCE_LISTS = set(DEFAULT_REFERENCE_LISTS.keys())

@@ -45,6 +45,13 @@ async def create_debate(body: dict[str, Any], background_tasks: BackgroundTasks)
             },
         )
 
+    markup_rounds = int(body.get("markup_rounds", 0) or 0)
+    if not 0 <= markup_rounds <= 2:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "out_of_range", "message": "markup_rounds must be 0..2"},
+        )
+
     parties = body.get("parties")
     if parties is not None:
         if not isinstance(parties, list) or not all(isinstance(p, str) and p for p in parties):
@@ -77,6 +84,7 @@ async def create_debate(body: dict[str, Any], background_tasks: BackgroundTasks)
         parties=parties,
         passage_rule=passage_rule,
         use_seat_weights=bool(body.get("use_seat_weights")),
+        markup_rounds=markup_rounds,
     )
 
     # Kick off the debate as a fire-and-forget asyncio task. This keeps the

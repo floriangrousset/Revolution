@@ -35,6 +35,8 @@ const PHASE_LABEL: Record<string, string> = {
   assistant_research: "Staff Research",
   synthesis: "Position Synthesis",
   cross_party_debate: "Cross-Party Debate",
+  markup: "Amendment Markup",
+  markup_debate: "Debate on the Amended Motion",
 };
 
 export function Results({ nav, param }: ResultsProps) {
@@ -43,6 +45,7 @@ export function Results({ nav, param }: ResultsProps) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [votes, setVotes] = useState<VoteRecord[]>([]);
   const [amendments, setAmendments] = useState<Amendment[]>([]);
+  const [showOriginalMotion, setShowOriginalMotion] = useState(false);
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [composingAgent, setComposingAgent] = useState<string | null>(null);
   const [livePhase, setLivePhase] = useState<string | null>(null);
@@ -194,8 +197,11 @@ export function Results({ nav, param }: ResultsProps) {
   }
 
   const tally = debate.tally;
-  const passed = debate.status === "passed";
+  const amended = debate.status === "amended";
+  const passed = debate.status === "passed" || amended;
   const changes = votes.filter((v) => v.changed);
+  const versions = debate.proposal_versions ?? [];
+  const finalVersion = versions.length ? versions[versions.length - 1] : null;
 
   const TABS: { id: Tab; label: string; icon: string; badge?: number }[] = [
     { id: "overview", label: "Overview", icon: "dashboard" },
@@ -230,7 +236,7 @@ export function Results({ nav, param }: ResultsProps) {
         style={{
           padding: "30px 34px",
           marginBottom: 24,
-          borderTop: `3px solid ${passed ? "var(--pass)" : "var(--reject)"}`,
+          borderTop: `3px solid ${amended ? "var(--gold-bright)" : passed ? "var(--pass)" : "var(--reject)"}`,
           position: "relative",
           overflow: "hidden",
         }}
@@ -309,9 +315,44 @@ export function Results({ nav, param }: ResultsProps) {
                 {debate.title}
               </h1>
             )}
-            <p style={{ fontSize: 14, color: "var(--txt-mute)", maxWidth: 660, lineHeight: 1.6, margin: 0 }}>
-              {debate.proposal}
-            </p>
+            {finalVersion ? (
+              <>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 6px" }}>
+                  <span
+                    className="mono"
+                    style={{
+                      fontSize: 11,
+                      color: "var(--gold-bright)",
+                      border: "1px solid var(--gold-deep)",
+                      borderRadius: 999,
+                      padding: "2px 9px",
+                    }}
+                  >
+                    v{finalVersion.version} — as amended
+                  </span>
+                  <button
+                    onClick={() => setShowOriginalMotion((s) => !s)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "var(--txt-faint)",
+                      fontSize: 11.5,
+                      textDecoration: "underline",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {showOriginalMotion ? "show as amended" : "show as introduced"}
+                  </button>
+                </div>
+                <p style={{ fontSize: 14, color: "var(--txt-mute)", maxWidth: 660, lineHeight: 1.6, margin: 0 }}>
+                  {showOriginalMotion ? debate.proposal : finalVersion.text}
+                </p>
+              </>
+            ) : (
+              <p style={{ fontSize: 14, color: "var(--txt-mute)", maxWidth: 660, lineHeight: 1.6, margin: 0 }}>
+                {debate.proposal}
+              </p>
+            )}
           </div>
           <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
             <Btn kind="primary" icon="download" onClick={() => setExportOpen(true)}>
@@ -758,6 +799,31 @@ function ChamberSeatNode({
       >
         {initials}
       </text>
+      {persona.image_url && (
+        <>
+          <clipPath id={`seat-clip-${persona.id}`}>
+            <circle r={seat.r - 1} />
+          </clipPath>
+          <image
+            href={persona.image_url}
+            x={-seat.r}
+            y={-seat.r}
+            width={seat.r * 2}
+            height={seat.r * 2}
+            preserveAspectRatio="xMidYMid slice"
+            clipPath={`url(#seat-clip-${persona.id})`}
+            opacity={active ? 1 : 0.88}
+            style={{ pointerEvents: "none" }}
+          />
+          <circle
+            r={seat.r}
+            fill="none"
+            stroke={ringCol}
+            strokeWidth={active || voteCol ? 2.4 : 1.4}
+            style={{ transition: "all .3s ease" }}
+          />
+        </>
+      )}
       {voteCol && (
         <g transform={`translate(${seat.r * 0.62},${-seat.r * 0.62})`}>
           <circle r="7.5" fill="var(--ink)" stroke={voteCol} strokeWidth="1.6" />
@@ -1584,9 +1650,10 @@ function SpeakerCard({
 }
 
 function FinalMotionCard({ debate }: { debate: DebateDetail }) {
-  const passed = debate.status === "passed";
+  const amended = debate.status === "amended";
+  const passed = debate.status === "passed" || amended;
   const tally = debate.tally;
-  const color = passed ? "var(--pass)" : "var(--reject)";
+  const color = amended ? "var(--gold-bright)" : passed ? "var(--pass)" : "var(--reject)";
   return (
     <div
       style={{
@@ -1623,7 +1690,7 @@ function FinalMotionCard({ debate }: { debate: DebateDetail }) {
           className="eyebrow"
           style={{ color, marginBottom: 4, whiteSpace: "nowrap" }}
         >
-          Motion {passed ? "Carries" : "Fails"}
+          Motion {amended ? "Carries as Amended" : passed ? "Carries" : "Fails"}
         </div>
         <div
           className="serif"

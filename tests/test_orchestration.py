@@ -48,9 +48,41 @@ class _StubModel:
         return _StubResponse("Generic response.")
 
 
+class _MarkupStubModel(_StubModel):
+    """Votes OPPOSE (with an amendment) on the original text and SUPPORT once
+    the markup clerk has incorporated it — exercising the full rescue loop."""
+
+    REVISED = "REVISED PROPOSAL vNEXT with the sunset clause incorporated."
+
+    async def ainvoke(self, messages):
+        prompt = messages[-1].content
+        if "chamber clerk" in prompt and "Amendment to incorporate" in prompt:
+            self.calls.append(prompt)
+            return _StubResponse(self.REVISED)
+        if "cast your final vote" in prompt:
+            self.calls.append(prompt)
+            if self.REVISED in prompt:
+                return _StubResponse(
+                    "VOTE: SUPPORT\nREASONING: The sunset clause fixes it.\nAMENDMENTS: None"
+                )
+            return _StubResponse(
+                "VOTE: OPPOSE\n"
+                "REASONING: Unacceptable without a sunset clause.\n"
+                "AMENDMENTS: Add a sunset clause after 5 years."
+            )
+        return await super().ainvoke(messages)
+
+
 @pytest.fixture
 def stub_model(monkeypatch):
     stub = _StubModel()
+    monkeypatch.setattr(nodes_module, "get_model", lambda: stub)
+    return stub
+
+
+@pytest.fixture
+def markup_stub_model(monkeypatch):
+    stub = _MarkupStubModel()
     monkeypatch.setattr(nodes_module, "get_model", lambda: stub)
     return stub
 
@@ -164,6 +196,79 @@ async def test_seat_config_flows_to_voting_result(stub_model):
     # All 22 stubbed agents SUPPORT → weighted support is the full 430 seats.
     assert voting.weighted_support == 430.0
     assert voting.by_party["republican"]["support"] == 11  # raw roll call intact
+
+
+async def test_markup_round_rescues_failed_vote_as_amended(markup_stub_model):
+    """Failed vote + amendments + markup_rounds=1 → clerk applies the top
+    amendment, heads debate, the chamber re-votes, and the motion passes
+    'as amended' at version 2."""
+    result = await run_negotiation(
+        proposal_text="Test proposal.",
+        max_rounds=1,
+        markup_rounds=1,
+    )
+
+    assert result["final_result"] == "amended"
+    proposal = result["proposal"]
+    assert proposal.current_version == 2
+    assert proposal.description == _MarkupStubModel.REVISED
+    assert result["applied_amendments"] == ["Add a sunset clause after 5 years."]
+    assert result["markup_rounds_done"] == 1
+
+    # Voting ran exactly twice (22 agents each), markup clerk once.
+    voting_calls = [c for c in markup_stub_model.calls if "cast your final vote" in c]
+    assert len(voting_calls) == 44
+    clerk_calls = [c for c in markup_stub_model.calls if "Amendment to incorporate" in c]
+    assert len(clerk_calls) == 1
+
+    # Markup phases made it into the record.
+    markup_msgs = [m for m in result["messages"] if m.phase == "markup"]
+    assert len(markup_msgs) == 1
+    head_turns = [m for m in result["debate_transcript"] if m.phase == "markup_debate"]
+    assert len(head_turns) == 2  # heads only, one each
+
+
+async def test_markup_disabled_keeps_failed_vote_rejected(markup_stub_model):
+    """Same failing stub with markup_rounds=0 (the default) must reject and
+    never invoke the clerk — guarding the pre-markup behavior."""
+    result = await run_negotiation(
+        proposal_text="Test proposal.",
+        max_rounds=1,
+    )
+    assert result["final_result"] == "rejected"
+    assert result["proposal"].current_version == 1
+    voting_calls = [c for c in markup_stub_model.calls if "cast your final vote" in c]
+    assert len(voting_calls) == 22
+    clerk_calls = [c for c in markup_stub_model.calls if "Amendment to incorporate" in c]
+    assert len(clerk_calls) == 0
+
+
+async def test_markup_loop_terminates_when_still_failing(monkeypatch):
+    """If agents keep opposing even after markup, the loop must stop at
+    max_markup_rounds and resolve 'rejected' — never spin."""
+
+    class _AlwaysOpposeStub(_MarkupStubModel):
+        async def ainvoke(self, messages):
+            prompt = messages[-1].content
+            if "cast your final vote" in prompt:
+                self.calls.append(prompt)
+                return _StubResponse(
+                    "VOTE: OPPOSE\nREASONING: Never.\nAMENDMENTS: Add a sunset clause after 5 years."
+                )
+            return await super().ainvoke(messages)
+
+    stub = _AlwaysOpposeStub()
+    monkeypatch.setattr(nodes_module, "get_model", lambda: stub)
+
+    result = await run_negotiation(
+        proposal_text="Test proposal.",
+        max_rounds=1,
+        markup_rounds=1,
+    )
+    assert result["final_result"] == "rejected"
+    assert result["markup_rounds_done"] == 1
+    voting_calls = [c for c in stub.calls if "cast your final vote" in c]
+    assert len(voting_calls) == 44  # exactly one re-vote, then resolution
 
 
 async def test_after_debate_decision_routes_continue_then_vote(stub_model):

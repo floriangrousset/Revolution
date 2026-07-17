@@ -176,6 +176,22 @@ As {agent_name}, present your party's case. Address the opposing party's key poi
 This is round {round_number} of {max_rounds} possible negotiation rounds.
 """
 
+AMENDMENT_MARKUP_PROMPT = """You are the chamber clerk preparing a markup of a proposal that failed its floor vote.
+
+## Proposal (as introduced)
+{proposal_description}
+
+## Amendment to incorporate
+{amendment_text}
+
+Rewrite the proposal so it fully incorporates this amendment. Preserve the
+original intent and structure wherever the amendment doesn't touch it, keep
+the register of legislative text, and do not add provisions nobody proposed.
+
+Return ONLY the complete revised proposal text — no preamble, no commentary,
+no headings.
+"""
+
 DEBATE_REBUTTAL_PROMPT = """Continue the cross-party debate.
 
 ## Proposal

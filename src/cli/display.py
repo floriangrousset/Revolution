@@ -176,9 +176,18 @@ class NegotiationDisplay:
         self.console.print(table)
         self.console.print()
 
-    def show_final_result(self, result: VotingResult):
-        """Display final negotiation result."""
-        if result.passed:
+    def show_final_result(self, result: VotingResult, final_status: str | None = None):
+        """Display final negotiation result.
+
+        `final_status` carries the graph's outcome string, which can be
+        "amended" (passed after a markup round) — a state the VotingResult
+        alone can't express.
+        """
+        if final_status == "amended" and result.passed:
+            status_style = "bold yellow"
+            status_text = "PASSED AS AMENDED"
+            border_style = "yellow"
+        elif result.passed:
             status_style = "bold green"
             status_text = "PASSED"
             border_style = "green"
@@ -192,6 +201,10 @@ class NegotiationDisplay:
         content = Text()
         content.append(f"{status_text}{bipartisan_text}\n\n", style=status_style)
         content.append(f"Final Vote: {result.margin}", style="white")
+        if result.rule != "majority":
+            content.append(
+                f"\nRule: {result.rule} ({result.required} needed)", style="dim"
+            )
 
         self.console.print()
         self.console.print(Panel(

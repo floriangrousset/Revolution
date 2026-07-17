@@ -25,6 +25,8 @@ export interface DebateDetail {
     use_seat_weights?: boolean;
     /** Party id → configured seats, snapshotted at debate creation. */
     seat_config?: Record<string, number> | null;
+    /** Markup cycles a failed vote may trigger (0 = amendments never applied). */
+    markup_rounds?: number;
   };
   status: DebateSummary["status"];
   result: string | null;
@@ -43,6 +45,8 @@ export interface DebateDetail {
   completed_at: string | null;
   duration_s?: number;
   error?: string;
+  /** Present when markup rewrote the motion: as-introduced + as-amended. */
+  proposal_versions?: { version: number; text: string; applied_amendments: string[] }[];
 }
 
 export interface CreateDebateRequest {
@@ -58,6 +62,8 @@ export interface CreateDebateRequest {
   passage_rule?: "majority" | "three_fifths" | "two_thirds";
   /** Weight each party's ballots by its configured voting_seats. */
   use_seat_weights?: boolean;
+  /** Allow N markup cycles when the vote fails and amendments exist (0-2). */
+  markup_rounds?: number;
 }
 
 export interface CreateDebateResponse {

@@ -35,6 +35,8 @@ export interface PersonaSummary {
   specialty: string;
   negotiation_posture: NegotiationPosture;
   persona_last_updated: string;
+  image_url?: string;
+  image_attribution?: string;
 }
 
 export interface Persona extends PersonaSummary {
@@ -119,6 +121,8 @@ export interface Turn {
     | "assistant_research"
     | "synthesis"
     | "cross_party_debate"
+    | "markup"
+    | "markup_debate"
     | "advisor"
     | "research"
     | "debate";

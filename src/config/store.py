@@ -71,6 +71,7 @@ def _default_prompts() -> dict[str, str]:
         "DEBATE_OPENING_PROMPT": _p.DEBATE_OPENING_PROMPT,
         "DEBATE_REBUTTAL_PROMPT": _p.DEBATE_REBUTTAL_PROMPT,
         "VOTING_PROMPT": _p.VOTING_PROMPT,
+        "AMENDMENT_MARKUP_PROMPT": _p.AMENDMENT_MARKUP_PROMPT,
     }
 
 

@@ -17,6 +17,7 @@ from ..agents.prompts import (
     SYNTHESIS_PROMPT,
     DEBATE_OPENING_PROMPT,
     DEBATE_REBUTTAL_PROMPT,
+    AMENDMENT_MARKUP_PROMPT,
 )
 
 log = logging.getLogger(__name__)
@@ -432,6 +433,122 @@ async def cross_party_debate(state: NegotiationState, display_callback=None) -> 
     return {
         "debate_transcript": debate_messages,
         "negotiation_round": state["negotiation_round"] + 1,
+    }
+
+
+# ============================================================================
+# Markup Nodes (amendment lifecycle)
+# ============================================================================
+
+def select_top_amendment(
+    amendments: list[str], sponsors: dict[str, list[str]]
+) -> str | None:
+    """Pick the amendment to mark up: most sponsors wins, first-seen breaks
+    ties (Python's sort is stable, so equal counts keep list order)."""
+    if not amendments:
+        return None
+    return sorted(amendments, key=lambda a: -len(sponsors.get(a, [])))[0]
+
+
+async def markup(state: NegotiationState, display_callback=None) -> dict[str, Any]:
+    """Incorporate the top-sponsored amendment into the proposal text.
+
+    Runs only when the final vote FAILED, amendments were tabled, and markup
+    rounds remain (see `after_final_vote_decision` in main_graph). Bumps
+    `Proposal.current_version` so resolution can report "amended" when the
+    revised text later passes.
+    """
+    from dataclasses import replace
+
+    proposal = state["proposal"]
+    chosen = select_top_amendment(
+        state.get("amendments_proposed") or [],
+        state.get("amendment_sponsors") or {},
+    )
+    if chosen is None:
+        # Defensive: the decision edge shouldn't route here without amendments.
+        return {"markup_rounds_done": state.get("markup_rounds_done", 0) + 1}
+
+    model = get_model()
+    response = await model.ainvoke([
+        HumanMessage(content=AMENDMENT_MARKUP_PROMPT.format(
+            proposal_description=proposal.description,
+            amendment_text=chosen,
+        )),
+    ])
+    revised_text = _content_text(response).strip() or proposal.description
+
+    amended_proposal = replace(
+        proposal,
+        description=revised_text,
+        amendments=list(proposal.amendments) + [chosen],
+        current_version=proposal.current_version + 1,
+        status="debating",
+    )
+    applied = list(state.get("applied_amendments") or []) + [chosen]
+
+    message = AgentMessage(
+        agent_id="system",
+        agent_name="Chamber Clerk",
+        party="neutral",
+        role="system",
+        content=(
+            f"The motion failed and returns for markup. Incorporating the "
+            f"amendment with the most sponsors:\n\n“{chosen}”\n\n"
+            f"Revised proposal (v{amended_proposal.current_version}):\n{revised_text}"
+        ),
+        phase="markup",
+    )
+    if display_callback:
+        display_callback(message)
+
+    return {
+        "proposal": amended_proposal,
+        "applied_amendments": applied,
+        "markup_rounds_done": state.get("markup_rounds_done", 0) + 1,
+        "messages": [message],
+        "phase": "markup",
+    }
+
+
+async def markup_debate(state: NegotiationState, display_callback=None) -> dict[str, Any]:
+    """Abbreviated floor debate on the amended text — party heads only, one
+    exchange each, before the chamber re-votes."""
+    model = get_model()
+    parties = _participating_parties(state)
+
+    debate_messages: list[AgentMessage] = []
+    for party in parties:
+        head = get_party_head(party)
+        debate_so_far = format_discussion(
+            list(state.get("debate_transcript", [])) + debate_messages
+        )
+        prompt = DEBATE_REBUTTAL_PROMPT.format(
+            proposal_description=state["proposal"].description,
+            debate_transcript=debate_so_far,
+            agent_name=head.name,
+        )
+        response = await model.ainvoke([
+            SystemMessage(content=head.get_system_prompt(
+                state["proposal"].description, _position_for(state, party)
+            )),
+            HumanMessage(content=prompt),
+        ])
+        msg = AgentMessage(
+            agent_id=head.id,
+            agent_name=head.name,
+            party=party,
+            role=head.role,
+            content=_content_text(response),
+            phase="markup_debate",
+        )
+        debate_messages.append(msg)
+        if display_callback:
+            display_callback(msg)
+
+    return {
+        "debate_transcript": debate_messages,
+        "phase": "markup_debate",
     }
 
 

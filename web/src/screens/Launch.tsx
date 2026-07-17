@@ -31,6 +31,7 @@ export function Launch({ nav }: LaunchProps) {
   const [temp, setTemp] = useState(0.8);
   const [passageRule, setPassageRule] = useState<"majority" | "three_fifths" | "two_thirds">("majority");
   const [seatWeights, setSeatWeights] = useState(false);
+  const [markupRound, setMarkupRound] = useState(false);
   const [parties, setParties] = useState<Record<string, boolean>>({
     democrat: true,
     republican: true,
@@ -71,6 +72,7 @@ export function Launch({ nav }: LaunchProps) {
         parties: chosenParties,
         passage_rule: passageRule,
         use_seat_weights: seatWeights,
+        markup_rounds: markupRound ? 1 : 0,
       });
       nav("results", resp.id);
     } catch (e) {
@@ -270,6 +272,32 @@ export function Launch({ nav }: LaunchProps) {
                 Weight each caucus's ballots by its real chamber strength (the party's
                 configured seat count) instead of one agent, one vote. Parties without a
                 configured seat count vote unweighted.
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  cursor: "pointer",
+                  fontSize: 13.5,
+                  fontWeight: 600,
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={markupRound}
+                  onChange={(e) => setMarkupRound(e.target.checked)}
+                  style={{ accentColor: T.gold, width: 15, height: 15 }}
+                />
+                Allow one markup round
+              </label>
+              <div style={{ fontSize: 12, color: "var(--txt-faint)", marginTop: 8, paddingLeft: 25 }}>
+                If the motion fails and amendments were tabled, the clerk incorporates the
+                most-sponsored amendment, the heads debate the amended text, and the chamber
+                re-votes. A motion that then passes is recorded as “amended”.
               </div>
             </div>
 

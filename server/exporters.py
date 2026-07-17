@@ -27,7 +27,9 @@ from . import db
 DISCLAIMER = (
     "Simulation. All personas are AI approximations of public political "
     "archetypes for research and modeling — not the real individuals, and "
-    "not statements of fact, endorsement, or prediction."
+    "not statements of fact, endorsement, or prediction. Portraits are "
+    "official public-domain or freely-licensed photos (see ATTRIBUTIONS) "
+    "and imply no endorsement."
 )
 
 PHASE_LABEL = {
@@ -36,6 +38,8 @@ PHASE_LABEL = {
     "assistant_research": "Staff Research",
     "synthesis": "Position Synthesis",
     "cross_party_debate": "Cross-Party Debate",
+    "markup": "Amendment Markup",
+    "markup_debate": "Debate on the Amended Motion",
 }
 
 _RULE_LABEL = {
@@ -83,8 +87,17 @@ def to_markdown(
         f"{tally.get('oppose', 0)} against"
     )
     lines.append("")
-    lines.append("## Proposal")
-    lines.append(debate.get("proposal", ""))
+    versions = debate.get("proposal_versions") or []
+    if versions:
+        final_v = versions[-1]
+        lines.append(f"## Proposal (as amended, v{final_v.get('version')})")
+        lines.append(final_v.get("text", ""))
+        lines.append("")
+        lines.append("### As introduced")
+        lines.append(debate.get("proposal", ""))
+    else:
+        lines.append("## Proposal")
+        lines.append(debate.get("proposal", ""))
     lines.append("")
 
     if turns:
@@ -276,7 +289,7 @@ def to_pdf(
 
     status_color = (
         PASS_GREEN
-        if debate.get("status") == "passed"
+        if debate.get("status") in ("passed", "amended")
         else REP_RED
         if debate.get("status") == "rejected"
         else INK_MUTE
@@ -298,8 +311,16 @@ def to_pdf(
     flow.append(Paragraph(summary, styles["body"]))
     flow.append(Spacer(1, 8))
 
-    flow.append(Paragraph("The Motion", styles["h2"]))
-    flow.append(Paragraph(_html_escape(debate.get("proposal", "")), styles["quote"]))
+    versions = debate.get("proposal_versions") or []
+    if versions:
+        final_v = versions[-1]
+        flow.append(Paragraph(f"The Motion (as amended, v{final_v.get('version')})", styles["h2"]))
+        flow.append(Paragraph(_html_escape(final_v.get("text", "")), styles["quote"]))
+        flow.append(Paragraph("As introduced", styles["h2"]))
+        flow.append(Paragraph(_html_escape(debate.get("proposal", "")), styles["quote"]))
+    else:
+        flow.append(Paragraph("The Motion", styles["h2"]))
+        flow.append(Paragraph(_html_escape(debate.get("proposal", "")), styles["quote"]))
 
     if turns:
         flow.append(Paragraph("Transcript", styles["h2"]))

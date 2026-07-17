@@ -150,3 +150,12 @@ class NegotiationState(TypedDict, total=False):
     # Amendment text → ids of the agents whose ballots proposed it. Rebuilt on
     # every voting pass (plain overwrite, no reducer).
     amendment_sponsors: dict[str, list[str]]
+    # ---- Markup loop (amendment lifecycle) ----
+    # How many markup cycles this debate may run (0 = amendments are recorded
+    # but never applied — the pre-markup behavior).
+    max_markup_rounds: int
+    # Cycles completed so far. The loop bound lives in state, not config, so
+    # a reducer mistake can't spin the graph forever.
+    markup_rounds_done: int
+    # Amendment texts that have been incorporated into the proposal.
+    applied_amendments: list[str]
