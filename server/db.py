@@ -466,6 +466,7 @@ def ensure_seeded() -> None:
     # schema fields and appends any bundled party (Green, DSA, …) that the
     # parties.json doesn't yet carry.
     _backfill_party_metadata()
+    _backfill_persona_images()
 
     source = REPO_ROOT / "src" / "agents" / "data"
     if not source.is_dir():
@@ -554,6 +555,50 @@ def _backfill_party_metadata() -> None:
         log.info("backfilled parties.json metadata")
 
 
+def _backfill_persona_images() -> None:
+    """Bring older persona files up to the current image schema in place.
+
+    Walks `data/personas/<party>/*.json`; any file missing the `image_url`
+    key gets `image_url` + `image_attribution` copied from the matching
+    bundled persona in `src/agents/data/<party>/<id>.json` (empty strings
+    when there is no bundled match). Each file is only rewritten when it
+    actually changed.
+    """
+    personas_root = _personas_dir()
+    if not personas_root.is_dir():
+        return
+    bundled_root = REPO_ROOT / "src" / "agents" / "data"
+    backfilled = 0
+    for party_dir in sorted(personas_root.iterdir()):
+        if not party_dir.is_dir():
+            continue
+        for json_file in sorted(party_dir.glob("*.json")):
+            try:
+                with json_file.open("r", encoding="utf-8") as f:
+                    record = json.load(f)
+            except (OSError, json.JSONDecodeError) as e:
+                log.warning("skipping unreadable persona %s: %s", json_file, e)
+                continue
+            if "image_url" in record:
+                continue
+            image_url, image_attribution = "", ""
+            bundled_file = bundled_root / party_dir.name / json_file.name
+            if bundled_file.is_file():
+                try:
+                    with bundled_file.open("r", encoding="utf-8") as f:
+                        bundled = json.load(f)
+                    image_url = bundled.get("image_url", "")
+                    image_attribution = bundled.get("image_attribution", "")
+                except (OSError, json.JSONDecodeError) as e:
+                    log.warning("unreadable bundled persona %s: %s", bundled_file, e)
+            record["image_url"] = image_url
+            record["image_attribution"] = image_attribution
+            _atomic_write_json(json_file, record)
+            backfilled += 1
+    if backfilled:
+        log.info("backfilled image fields on %d persona files", backfilled)
+
+
 # ---------------------------------------------------------------------------
 # Atomic write helpers
 # ---------------------------------------------------------------------------
@@ -588,6 +633,7 @@ def _summary(agent: Agent) -> dict[str, Any]:
         "specialty": agent.specialty,
         "negotiation_posture": agent.negotiation_posture,
         "persona_last_updated": agent.persona_last_updated,
+        "image_url": agent.image_url,
     }
 
 

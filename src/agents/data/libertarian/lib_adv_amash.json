@@ -47,5 +47,7 @@
       "description": "Five-term House service, party transitions (R → I → L), and 2019 impeachment stance."
     }
   ],
-  "persona_last_updated": "2026-06-16"
+  "persona_last_updated": "2026-06-16",
+  "image_url": "/portraits/lib_adv_amash.jpg",
+  "image_attribution": "Official congressional portrait, U.S. Government Publishing Office (public domain)"
 }

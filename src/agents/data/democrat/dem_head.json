@@ -56,5 +56,7 @@
       "description": "Encyclopedic biography and career overview of Chuck Schumer."
     }
   ],
-  "persona_last_updated": "2026-07-17"
+  "persona_last_updated": "2026-07-17",
+  "image_url": "/portraits/dem_head.jpg",
+  "image_attribution": "Official congressional portrait, U.S. Government Publishing Office (public domain)"
 }

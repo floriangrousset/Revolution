@@ -100,6 +100,10 @@ class Agent:
     personality_assessment: str = ""
     sources: list[Source] = field(default_factory=list)
     persona_last_updated: str = ""
+    # Portrait: web path (e.g. "/portraits/<id>.jpg") or absolute URL.
+    # Empty string = no portrait; the UI falls back to an initials avatar.
+    image_url: str = ""
+    image_attribution: str = ""
 
     def __post_init__(self) -> None:
         if not isinstance(self.party, str) or not self.party.strip():

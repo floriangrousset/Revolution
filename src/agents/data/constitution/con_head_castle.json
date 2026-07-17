@@ -47,5 +47,7 @@
       "description": "Long-running weekly commentary on constitutional and foreign-policy issues."
     }
   ],
-  "persona_last_updated": "2026-06-16"
+  "persona_last_updated": "2026-06-16",
+  "image_url": "/portraits/con_head_castle.jpg",
+  "image_attribution": "Photo: 2008 Baldwin/Castle National Campaign Headquarters, public domain, via Wikimedia Commons"
 }

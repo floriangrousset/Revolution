@@ -26,6 +26,7 @@ export function AddPersonaModal({ open, onClose, onCreated }: AddPersonaModalPro
   const [role, setRole] = useState<Role>("advisor");
   const [posture, setPosture] = useState<NegotiationPosture>("pragmatist");
   const [philosophy, setPhilosophy] = useState("");
+  const [portraitUrl, setPortraitUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,6 +46,7 @@ export function AddPersonaModal({ open, onClose, onCreated }: AddPersonaModalPro
     setRole("advisor");
     setPosture("pragmatist");
     setPhilosophy("");
+    setPortraitUrl("");
     setError(null);
   };
 
@@ -88,6 +90,8 @@ export function AddPersonaModal({ open, onClose, onCreated }: AddPersonaModalPro
         negotiation_posture: posture,
         constituency: "",
         persona_last_updated: new Date().toISOString().slice(0, 10),
+        image_url: portraitUrl.trim(),
+        image_attribution: "",
       };
       await api.createPersona(persona);
       onCreated();
@@ -218,6 +222,13 @@ export function AddPersonaModal({ open, onClose, onCreated }: AddPersonaModalPro
           value={philosophy}
           onChange={(e) => setPhilosophy(e.target.value)}
           placeholder="What does this agent fundamentally believe?"
+        />
+      </Field>
+      <Field label="Portrait URL (optional)">
+        <TextInput
+          value={portraitUrl}
+          onChange={(e) => setPortraitUrl(e.target.value)}
+          placeholder="e.g. /portraits/lib_adv_amash.jpg or https://…"
         />
       </Field>
 

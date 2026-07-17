@@ -209,6 +209,14 @@ export function PersonaDetail({ id, nav }: PersonaDetailProps) {
             ) : (
               <div style={{ fontSize: 15, color: "var(--txt-mute)" }}>{draft.title}</div>
             )}
+            {edit && (
+              <TextInput
+                value={draft.image_url ?? ""}
+                onChange={(e) => set("image_url", e.target.value)}
+                placeholder="Portrait URL (optional — /portraits/<id>.jpg or https://…)"
+                style={{ marginTop: 8 }}
+              />
+            )}
             <div
               className="mono"
               style={{ fontSize: 12, color: "var(--txt-faint)", marginTop: 10 }}
@@ -216,6 +224,11 @@ export function PersonaDetail({ id, nav }: PersonaDetailProps) {
               {draft.id}
               {draft.persona_last_updated ? ` · updated ${draft.persona_last_updated}` : ""}
             </div>
+            {!edit && draft.image_attribution && (
+              <div style={{ fontSize: 11, color: "var(--txt-faint)", marginTop: 6 }}>
+                {draft.image_attribution}
+              </div>
+            )}
           </div>
           <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
             {edit ? (

@@ -24,6 +24,9 @@ interface LayoutNode {
 export function Graph({ nav }: GraphProps) {
   const [nodes, setNodes] = useState<RelationshipNode[]>([]);
   const [edges, setEdges] = useState<RelationshipEdge[]>([]);
+  // Relationship nodes don't carry persona fields beyond id/name/party/role,
+  // so portraits are threaded in from the persona summaries (id → image_url).
+  const [imgById, setImgById] = useState<Record<string, string>>({});
   const [show, setShow] = useState<{ allies: boolean; rivals: boolean }>({
     allies: true,
     rivals: true,
@@ -39,6 +42,17 @@ export function Graph({ nav }: GraphProps) {
         setEdges(r.edges);
       })
       .catch((e) => setError(String(e.message || e)));
+    void api
+      .listPersonas()
+      .then((r) => {
+        const map: Record<string, string> = {};
+        r.personas.forEach((s) => {
+          if (s.image_url) map[s.id] = s.image_url;
+        });
+        setImgById(map);
+      })
+      // Portraits are a progressive enhancement — initials still render.
+      .catch(() => setImgById({}));
   }, []);
 
   const layout = useMemo<Record<string, LayoutNode>>(() => {
@@ -158,6 +172,7 @@ export function Graph({ nav }: GraphProps) {
             const bright = partyBright(p.party);
             const dim = isDim(p.id);
             const r = p.role === "party_head" ? 28 : 20;
+            const img = imgById[p.id];
             return (
               <g
                 key={p.id}
@@ -184,6 +199,8 @@ export function Graph({ nav }: GraphProps) {
                     opacity="0.8"
                   />
                 )}
+                {/* Initials always render; a loaded portrait covers them, so
+                    they remain the fallback when no image_url or on error. */}
                 <text
                   textAnchor="middle"
                   dy={r * 0.34}
@@ -194,6 +211,29 @@ export function Graph({ nav }: GraphProps) {
                 >
                   {initials}
                 </text>
+                {img && (
+                  <>
+                    <clipPath id={`graph-node-clip-${p.id}`}>
+                      <circle r={r} />
+                    </clipPath>
+                    <image
+                      href={img}
+                      x={-r}
+                      y={-r}
+                      width={r * 2}
+                      height={r * 2}
+                      preserveAspectRatio="xMidYMid slice"
+                      clipPath={`url(#graph-node-clip-${p.id})`}
+                    />
+                    {/* Re-draw the party-colored ring above the portrait. */}
+                    <circle
+                      r={r}
+                      fill="none"
+                      stroke={hover === p.id ? T.goldBright : bright}
+                      strokeWidth={hover === p.id ? 2.5 : 1.5}
+                    />
+                  </>
+                )}
                 <text
                   textAnchor="middle"
                   y={r + 15}

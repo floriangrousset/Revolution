@@ -54,5 +54,7 @@
       "description": "Official Senate Republican Leader site confirming Thune as Majority Leader in the 119th Congress."
     }
   ],
-  "persona_last_updated": "2026-07-17"
+  "persona_last_updated": "2026-07-17",
+  "image_url": "/portraits/rep_adv_econ.jpg",
+  "image_attribution": "Official congressional portrait, U.S. Government Publishing Office (public domain)"
 }
