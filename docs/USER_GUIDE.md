@@ -118,9 +118,12 @@ Tap one to drop its text into the textarea — useful for first runs.
 
 ### Deliberation terms
 
-Two controls live in this card:
+Five controls live in this card:
 
 - **Cross-party debate rounds (1–5).** A button group; the selected number is highlighted gold. More rounds = deeper rebuttals and more chances for agents to be persuaded out of their starting vote. Each additional round adds ~3–4 minutes of runtime and ~6 API calls.
+- **Passage rule.** Simple majority (support > oppose), 3⁄5 cloture (modeled on the Senate's 60-vote threshold), or 2⁄3 supermajority (modeled on veto-override votes). The math is integer-exact — 66 of 99 decisive votes passes 2⁄3 precisely. Abstentions never count against passage.
+- **Seat-weighted voting.** When on, each caucus's ballots are weighted by its registered `voting_seats` (Democrats 212, Republicans 218 out of the box — the July-2026 House split; edit them in the Party Manager). An 11–11 persona tie then resolves 218–212. Parties without a configured seat count vote unweighted, and the roll call always shows raw head-counts alongside the ×weight per ballot.
+- **Allow one markup round.** If the motion *fails* and amendments were tabled, the chamber clerk incorporates the most-sponsored amendment into the text, the party heads hold one exchange on the revised motion, and the chamber re-votes. A motion that then passes is recorded as **amended** (amber verdict, with a "v2 — as amended" badge and an as-introduced toggle on the Results page).
 - **Temperature (0.00 → 1.00).** A standard slider. Left side is labelled *"Disciplined · on-message"*; right side is *"Volatile · unpredictable"*. The display value updates live, two decimals.
 
 A small note under the controls reminds you that the **reasoning model is set globally in Settings** — the slider only overrides *temperature* per debate. (If you want to swap Sonnet for Opus, head to [Settings → Engine](#91-engine-tab).)
@@ -134,7 +137,7 @@ A toggle list of every party registered in `data/parties.json`. Each row shows:
 - The seat count in parentheses.
 - A check (✓) if selected, a plus (+) if not.
 
-Custom parties that you create from the [Party Manager](#7-️-party-manager) appear here automatically with no extra wiring. A helper note clarifies the current engine limit: *"the engine currently runs the deliberation flow for Democrats & Republicans only — custom caucuses appear in the registry and forecast but don't yet take the floor."*
+Custom parties that you create from the [Party Manager](#7-️-party-manager) appear here automatically with no extra wiring — and any caucus you toggle on **takes the floor for real**: it deliberates privately, debates across the aisle, and votes, exactly like the two seeded caucuses.
 
 ### Session forecast
 
@@ -323,7 +326,7 @@ The grid below is a 240-px-min auto-fit of **persona cards**. Each card has:
 - A row of tags: role (Party Head / Advisor / Assistant) and posture (Dealmaker / Hardliner / …).
 - The whole card is clickable → opens the persona detail.
 
-At the bottom of the list, a small note reminds you that if you have custom caucuses, *"the engine currently runs the deliberation flow for Democrats & Republicans only — custom caucuses can hold personas but don't (yet) take the floor."*
+Custom caucuses hold personas and take the floor like any other party — toggle them into a debate from the [Launch screen](#4--launch-a-debate).
 
 ### 6.2 Persona detail — read mode
 
@@ -550,9 +553,10 @@ The CLI (`python -m src.main`) hits the *same* graph and the *same* personas/par
 
 A few honest caveats:
 
-- **The deliberation flow is hard-coded to Democrats + Republicans today.** The Persona Manager, Party Manager, Relationship Graph, and Launch screen all support N parties (libertarian, green, working families, etc.) — and you can author personas inside them. But the LangGraph flow itself currently only runs the two seeded caucuses end-to-end. Extending the flow to dynamic parties is on the roadmap (see [README → Contributing](../README.md#-contributing)).
+- **One chamber, stylized procedure.** The simulated chamber mixes House and Senate figures, debate is time-boxed by rounds rather than motions, and a markup cycle processes one amendment at a time. [docs/REALISM.md](REALISM.md) is the full audit of what's faithful, what's simplified, and what's next (committees, bicameralism, veto/override, whip counts).
 - **SSE streams one event per completed turn.** Token-level streaming would make the "composing remarks…" indicator feel even more alive. There's a known `astream` hook in `src/graphs/nodes.py` that's wired up for one event per *turn* today; finer-grained streaming is a planned follow-up.
-- **This is a simulation, not a forecast.** The DisclaimerBar at the bottom of every screen says it. Every PDF / Markdown / JSON export embeds it. The personas are based on documented public positions but are still LLM caricatures — the outcome of any individual debate is a function of the motion text, the temperature, the model, and the LLM's mood.
+- **Upgrades don't overwrite your roster.** `data/personas/` is seeded once; if you're upgrading from a pre-July-2026 install, delete `data/personas/democrat` and `data/personas/republican` to receive the fact-checked roster (Katie Britt, Adrian Smith, and Todd Young replaced the departed JD Vance, Marco Rubio, and Lindsey Graham). Portraits and party seat counts backfill automatically. Note for stats-watchers: ballots now list each amendment as its own entry, so amendment counts run higher than in older debates.
+- **This is a simulation, not a forecast.** The DisclaimerBar at the bottom of every screen says it. Every PDF / Markdown / JSON export embeds it. The personas are based on documented public positions but are still LLM caricatures — the outcome of any individual debate is a function of the motion text, the temperature, the model, and the LLM's mood. Portraits are official public-domain or freely-licensed photos ([attributions](../web/public/portraits/ATTRIBUTIONS.md)) and imply no endorsement.
 
 If you find a sharp edge — a hemicycle seat that doesn't refresh, an export that drops an amendment, a persona whose specialty isn't quite right — open an issue. PRs are very welcome.
 
