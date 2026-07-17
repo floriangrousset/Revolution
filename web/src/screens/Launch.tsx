@@ -406,9 +406,8 @@ export function Launch({ nav }: LaunchProps) {
               );
             })}
             <div style={{ fontSize: 12, color: "var(--txt-faint)", marginTop: 6, lineHeight: 1.5 }}>
-              Custom parties you create in the Persona Manager will appear here automatically.
-              (Note: the engine currently runs the deliberation flow for democrat & republican
-              only.)
+              Custom parties you create in the Persona Manager will appear here automatically —
+              every caucus you toggle on deliberates, debates, and votes.
             </div>
           </Card>
 
