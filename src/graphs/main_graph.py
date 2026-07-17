@@ -8,12 +8,13 @@ from .nodes import cross_party_debate, conduct_voting, initial_voting, markup, m
 from ..voting.consensus import VotingResult, VotingRules, determine_final_result
 
 
-def _compute_result(state: NegotiationState) -> VotingResult:
+def compute_result(state: NegotiationState) -> VotingResult:
     """Tally the current votes under this debate's rules and weights.
 
-    Shared by the post-vote routing decision and the resolution node so both
-    apply identical passage rules — a divergence here would let a bill route
-    to markup and then "pass" in resolution (or vice versa).
+    The single canonical tally path: used by the post-vote routing decision,
+    the resolution node, and as the fallback in `server/engine.py` /
+    `src/main.py` for result states that predate `voting_result` — so every
+    consumer applies identical passage rules, quorum, and seat weights.
     """
     votes_by_party: dict[str, list[Vote]] = dict(state.get("votes_by_party") or {})
     # Back-fill from the legacy per-party fields if the dict is sparse.
@@ -22,12 +23,16 @@ def _compute_result(state: NegotiationState) -> VotingResult:
     if not votes_by_party.get("democrat") and state.get("democrat_votes"):
         votes_by_party["democrat"] = list(state["democrat_votes"])
 
-    rules = VotingRules(rule=state.get("passage_rule") or "majority")
+    rules = VotingRules(
+        rule=state.get("passage_rule") or "majority",
+        quorum=state.get("quorum"),
+    )
     return determine_final_result(
         votes_by_party,
         rules=rules,
         seat_weights=state.get("seat_config") or None,
     )
+
 
 # Default participating parties for the CLI and any test caller that hasn't
 # migrated to passing `parties=...` explicitly.
@@ -153,7 +158,7 @@ def build_main_graph(
 
     async def resolution_node(state: NegotiationState) -> dict:
         """Calculate and announce final result."""
-        result = _compute_result(state)
+        result = compute_result(state)
         if result.passed:
             # A bill that passed after at least one markup cycle passed "as
             # amended" — surface that as its own outcome.
@@ -198,13 +203,15 @@ def build_main_graph(
 
     def after_final_vote_decision(state: NegotiationState) -> Literal["resolve", "markup"]:
         """After the final vote: run a markup cycle iff the vote FAILED,
-        amendments were tabled, and markup rounds remain. A bill that passed
-        never gets marked up — markup here is rescue, not embellishment."""
+        un-applied amendments remain on the docket, and markup rounds remain.
+        A bill that passed never gets marked up — markup here is rescue, not
+        embellishment."""
         if state.get("markup_rounds_done", 0) >= state.get("max_markup_rounds", 0):
             return "resolve"
-        if not state.get("amendments_proposed"):
+        applied = set(state.get("applied_amendments") or [])
+        if not any(a not in applied for a in state.get("amendments_proposed") or []):
             return "resolve"
-        if _compute_result(state).passed:
+        if compute_result(state).passed:
             return "resolve"
         return "markup"
 
@@ -277,6 +284,7 @@ async def run_negotiation(
     temperature: Optional[float] = None,
     parties: Optional[list[str]] = None,
     passage_rule: Optional[str] = None,
+    quorum: Optional[float] = None,
     seat_config: Optional[dict[str, int]] = None,
     markup_rounds: int = 0,
 ) -> NegotiationState:
@@ -292,6 +300,9 @@ async def run_negotiation(
             ["democrat", "republican"] for back-compat with the CLI and tests.
         passage_rule: "majority" (default), "three_fifths", or "two_thirds".
             Falls back to the settings-store default when omitted.
+        quorum: Optional fraction of ALL voters who must cast a decisive
+            (non-abstain) vote for the motion to be valid. Falls back to the
+            settings-store `voting.quorum` (None = no quorum).
         seat_config: Optional party id → seat count map for seat-weighted
             voting. Omitted/empty = one agent, one vote (unweighted).
         markup_rounds: How many markup cycles a FAILED vote may trigger
@@ -302,7 +313,7 @@ async def run_negotiation(
         Final NegotiationState with results
     """
     from .nodes import set_model_overrides
-    from ..config import get_default_passage_rule
+    from ..config import get_default_passage_rule, get_default_quorum
     set_model_overrides(model=model, temperature=temperature)
 
     party_ids = list(parties) if parties else list(DEFAULT_PARTIES)
@@ -325,6 +336,7 @@ async def run_negotiation(
         "max_rounds": max_rounds,
         "phase": "proposal_submission",
         "passage_rule": passage_rule or get_default_passage_rule(),
+        "quorum": quorum if quorum is not None else get_default_quorum(),
         "seat_config": dict(seat_config) if seat_config else {},
         "voting_result": None,
         "final_result": None,

@@ -31,7 +31,10 @@ async def create_debate(body: dict[str, Any], background_tasks: BackgroundTasks)
     proposal = (body.get("proposal") or "").strip()
     if not proposal:
         raise HTTPException(status_code=422, detail={"code": "missing_field", "message": "proposal is required"})
-    max_rounds = int(body.get("max_rounds", 2))
+    try:
+        max_rounds = int(body.get("max_rounds", 2))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=422, detail={"code": "invalid", "message": "max_rounds must be an integer"})
     if not 1 <= max_rounds <= 5:
         raise HTTPException(status_code=422, detail={"code": "out_of_range", "message": "max_rounds must be 1..5"})
 
@@ -45,7 +48,13 @@ async def create_debate(body: dict[str, Any], background_tasks: BackgroundTasks)
             },
         )
 
-    markup_rounds = int(body.get("markup_rounds", 0) or 0)
+    try:
+        markup_rounds = int(body.get("markup_rounds", 0) or 0)
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "invalid", "message": "markup_rounds must be an integer"},
+        )
     if not 0 <= markup_rounds <= 2:
         raise HTTPException(
             status_code=422,

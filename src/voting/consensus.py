@@ -147,14 +147,15 @@ def determine_final_result(
     decisive = total_support + total_oppose
     total_votes = decisive + total_abstain
 
-    # Per-vote weights (exact fractions). Weight 1 unless the party has a
-    # configured seat count and actually cast ballots.
+    # Per-vote weights (exact fractions). A party absent from the map votes
+    # with weight 1; a party EXPLICITLY configured with 0 seats votes with
+    # weight 0 (its ballots count for nothing, as configured).
     use_weights = bool(seat_weights)
     per_vote_weight: dict[str, Fraction] = {}
     if use_weights and seat_weights is not None:
         for party, votes in votes_by_party.items():
             seats = seat_weights.get(party)
-            if seats and votes:
+            if seats is not None and votes:
                 per_vote_weight[party] = Fraction(seats, len(votes))
             else:
                 per_vote_weight[party] = Fraction(1)

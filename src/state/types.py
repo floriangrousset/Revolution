@@ -136,6 +136,9 @@ class NegotiationState(TypedDict, total=False):
     phase: str
     # Passage rule for this debate ("majority" / "three_fifths" / "two_thirds").
     passage_rule: str
+    # Optional quorum: fraction of all voters who must cast a decisive
+    # (non-abstain) vote for the result to be valid. None = no quorum.
+    quorum: Optional[float]
     # Optional seat-weighting snapshot: party id → configured seat count,
     # captured when the debate was created. Empty dict = unweighted.
     seat_config: dict[str, int]

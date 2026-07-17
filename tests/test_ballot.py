@@ -1,10 +1,12 @@
 """Tests for the structured `cast_ballot` voting seam.
 
-Covers the four resolution tiers: structured success, structured retry,
-legacy free-text fallback, and the explicit `[unparsed]` abstain that
-replaces the old silent-abstain default.
+Covers the resolution tiers: structured success, retry on schema garbage,
+legacy free-text fallback — and that infrastructure errors PROPAGATE so a
+dead API ends the debate in status='error' instead of a fabricated
+all-abstain tally.
 """
 import pytest
+from langchain_core.exceptions import OutputParserException
 
 from src.graphs import nodes as nodes_module
 from src.graphs.nodes import cast_ballot
@@ -65,11 +67,11 @@ class _TextOnlyModel:
         return _Resp()
 
 
-class _BrokenModel:
-    """Fails on both the structured and the plain path."""
+class _ApiDownModel:
+    """Simulates an infrastructure failure — errors must PROPAGATE."""
 
     def with_structured_output(self, schema):
-        return _StructuredRunnable([RuntimeError("tool call refused")])
+        return _StructuredRunnable([RuntimeError("api down")])
 
     async def ainvoke(self, messages):
         raise RuntimeError("api down")
@@ -99,7 +101,7 @@ async def test_structured_ballot_success(monkeypatch, agent):
 
 async def test_structured_ballot_retries_once_then_succeeds(monkeypatch, agent):
     ballot = VoteBallot(vote="oppose", reasoning="Crosses a red line.")
-    model = _StructuredModel([RuntimeError("parse error"), ballot])
+    model = _StructuredModel([OutputParserException("parse error"), ballot])
     _patch(monkeypatch, model)
 
     vote = await cast_ballot(agent, "republican", "sys", "human")
@@ -109,9 +111,9 @@ async def test_structured_ballot_retries_once_then_succeeds(monkeypatch, agent):
     assert model.text_calls == 0
 
 
-async def test_structured_failure_falls_back_to_text_parsing(monkeypatch, agent):
+async def test_schema_failure_falls_back_to_text_parsing(monkeypatch, agent):
     model = _StructuredModel(
-        [RuntimeError("boom"), RuntimeError("boom again")],
+        [OutputParserException("boom"), OutputParserException("boom again")],
         text_response="VOTE: OPPOSE\nREASONING: Fallback path works.\nAMENDMENTS: None",
     )
     _patch(monkeypatch, model)
@@ -135,10 +137,10 @@ async def test_text_only_model_uses_legacy_parser(monkeypatch, agent):
     assert vote.reasoning == "Legacy stub."
 
 
-async def test_total_failure_becomes_marked_abstain(monkeypatch, agent):
-    _patch(monkeypatch, _BrokenModel())
+async def test_api_failure_propagates(monkeypatch, agent):
+    """Infrastructure errors must NOT become silent abstains — they bubble up
+    so the debate runner records status='error'."""
+    _patch(monkeypatch, _ApiDownModel())
 
-    vote = await cast_ballot(agent, "republican", "sys", "human")
-
-    assert vote.vote == "abstain"
-    assert vote.reasoning.startswith("[unparsed]")
+    with pytest.raises(RuntimeError, match="api down"):
+        await cast_ballot(agent, "republican", "sys", "human")

@@ -7,8 +7,7 @@ from rich.console import Console
 from rich.prompt import Prompt
 
 from .cli.display import NegotiationDisplay
-from .graphs.main_graph import run_negotiation
-from .voting.consensus import determine_final_result
+from .graphs.main_graph import compute_result, run_negotiation
 
 
 def check_api_key() -> bool:
@@ -65,9 +64,10 @@ async def run_interactive_session(display: NegotiationDisplay):
         if not votes_by_party.get("democrat") and result.get("democrat_votes"):
             votes_by_party["democrat"] = result["democrat_votes"]
 
-        # The resolution node already applied the debate's passage rule;
-        # recompute only for older result shapes that lack it.
-        voting_result = result.get("voting_result") or determine_final_result(votes_by_party)
+        # The resolution node already applied the debate's passage rule; the
+        # fallback goes through the same canonical tally helper so a
+        # recompute can never apply different rules than the graph did.
+        voting_result = result.get("voting_result") or compute_result(result)
 
         display.show_phase("Final Voting Results", "neutral")
         for party in result.get("parties") or list(votes_by_party.keys()):

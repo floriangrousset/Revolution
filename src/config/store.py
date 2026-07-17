@@ -307,6 +307,18 @@ def get_default_temperature() -> float:
         return DEFAULT_TEMPERATURE
 
 
+def get_default_quorum() -> float | None:
+    """The configured quorum fraction (voting.quorum), or None when unset."""
+    raw = get_settings_store().get("voting.quorum")
+    try:
+        value = float(raw) if raw is not None else None
+    except (TypeError, ValueError):
+        return None
+    if value is not None and 0 < value <= 1:
+        return value
+    return None
+
+
 def get_default_passage_rule() -> str:
     """Default passage rule for debates that don't pin one explicitly."""
     from src.voting.consensus import PASSAGE_RULES

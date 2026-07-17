@@ -151,5 +151,5 @@ export interface Amendment {
   by: string | null;
   /** All agent ids whose ballots proposed this amendment. */
   sponsors?: string[];
-  status: "proposed" | "accepted" | "contested" | "rejected";
+  status: "proposed" | "accepted" | "contested" | "rejected" | "incorporated";
 }

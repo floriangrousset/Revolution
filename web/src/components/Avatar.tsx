@@ -12,7 +12,9 @@ export function Avatar({
   size?: number;
   ring?: boolean;
 }) {
-  const [imgError, setImgError] = useState(false);
+  // Track WHICH url errored, so a reused (un-keyed) instance retries when
+  // the persona — or a corrected portrait URL — changes under it.
+  const [errorUrl, setErrorUrl] = useState<string | null>(null);
   const initials = p.name
     .split(" ")
     .filter(Boolean)
@@ -20,14 +22,14 @@ export function Avatar({
     .map((s) => s[0])
     .join("");
   const head = p.role === "party_head";
-  const showImage = !!p.image_url && !imgError;
+  const showImage = !!p.image_url && errorUrl !== p.image_url;
   return (
     <div style={{ position: "relative", width: size, height: size, flex: "0 0 auto" }}>
       {showImage ? (
         <img
           src={p.image_url}
           alt={p.name}
-          onError={() => setImgError(true)}
+          onError={() => setErrorUrl(p.image_url ?? null)}
           style={{
             width: size,
             height: size,

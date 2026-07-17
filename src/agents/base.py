@@ -120,6 +120,18 @@ class Agent:
                 f"Agent '{self.id}': invalid negotiation_posture {self.negotiation_posture!r}; "
                 f"expected one of {valid_postures}"
             )
+        if not isinstance(self.image_url, str) or not isinstance(self.image_attribution, str):
+            raise ValueError(
+                f"Agent '{self.id}': image_url and image_attribution must be strings"
+            )
+        url = self.image_url.strip()
+        if url and not url.startswith(("/", "http://", "https://")):
+            raise ValueError(
+                f"Agent '{self.id}': image_url must be a web path (/...) or http(s) URL"
+            )
+        if len(url) > 2048:
+            raise ValueError(f"Agent '{self.id}': image_url is too long")
+        self.image_url = url
         if not isinstance(self.sources, list):
             raise ValueError(
                 f"Agent '{self.id}': sources must be a list, got {type(self.sources).__name__}"

@@ -174,6 +174,30 @@ def test_seat_weights_party_without_config_votes_unweighted():
     assert result.weighted_oppose == 3.0
 
 
+def test_explicit_zero_seats_means_zero_weight():
+    """A party CONFIGURED with 0 seats must not vote at weight 1 — its
+    ballots carry no weight, exactly as configured."""
+    votes = {
+        "republican": _votes("republican", support=11),
+        "green": _votes("green", oppose=3),
+    }
+    result = determine_final_result(
+        votes, seat_weights={"republican": 218, "green": 0}
+    )
+    assert result.weights_by_party["green"] == 0.0
+    assert result.weighted_oppose == 0.0
+    assert result.passed
+
+
+def test_quorum_from_rules_blocks_heavy_abstention():
+    result = determine_final_result(
+        {"a": _votes("a", support=2, abstain=20)},
+        rules=VotingRules(rule="majority", quorum=0.5),
+    )
+    assert not result.passed
+    assert "failed quorum" in result.margin
+
+
 def test_bipartisan_uses_raw_counts_when_weighted():
     votes = {
         "republican": _votes("republican", support=11),

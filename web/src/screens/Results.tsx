@@ -29,6 +29,11 @@ interface ResultsProps {
 
 type Tab = "overview" | "breakdown" | "timeline" | "transcript" | "amendments";
 
+/** Weighted tallies are floats (seats ÷ ballots); show at most one decimal. */
+function fmtWeighted(n: number): string {
+  return Number.isInteger(n) ? String(n) : n.toFixed(1);
+}
+
 const PHASE_LABEL: Record<string, string> = {
   intro: "Opening Remarks",
   advisor_discussion: "Caucus Analysis",
@@ -262,9 +267,11 @@ export function Results({ nav, param }: ResultsProps) {
                 {debate.config.passage_rule === "three_fifths" && " · 3⁄5 cloture rule"}
                 {debate.config.passage_rule === "two_thirds" && " · 2⁄3 supermajority rule"}
                 {debate.config.use_seat_weights && " · seat-weighted"}
-                {debate.voting && debate.voting.required > 0 && ` · ${debate.voting.required} to pass`}
+                {debate.voting &&
+                  debate.voting.required > 0 &&
+                  ` · ${debate.voting.required}${debate.voting.weighted ? " weighted" : ""} to pass`}
                 {debate.voting?.weighted &&
-                  ` · weighted ${debate.voting.weighted_support ?? 0}–${debate.voting.weighted_oppose ?? 0}`}
+                  ` · weighted ${fmtWeighted(debate.voting.weighted_support ?? 0)}–${fmtWeighted(debate.voting.weighted_oppose ?? 0)}`}
               </span>
             </div>
             {editingTitle ? (
@@ -974,13 +981,21 @@ function Overview({
   const daisLabel = PHASE_LABEL[activePhase] || activePhase || "The Floor";
 
   const totalDelivered = speakerTurns.length;
+  // Markup turns are conditional (only when a vote fails), so they join the
+  // expectation as they actually happen instead of being pre-budgeted.
+  const markupDelivered =
+    (turnsByPhase["markup"] || []).length + (turnsByPhase["markup_debate"] || []).length;
   // Expected speech turns — every phase except the vote roll call.
-  const totalExpected = PHASE_ORDER.reduce(
-    (acc, ph) => (ph.key === "final_voting" ? acc : acc + ph.expected(debate, roster)),
-    0,
-  );
+  const totalExpected =
+    PHASE_ORDER.reduce(
+      (acc, ph) => (ph.key === "final_voting" ? acc : acc + ph.expected(debate, roster)),
+      0,
+    ) + markupDelivered;
   const currentPhase = (() => {
-    // The "active" phase is the one whose count is still below expected.
+    // A markup cycle re-opens the floor after the vote — reflect it live.
+    const lastPhaseKey = lastSpeakerTurn?.phase;
+    if (lastPhaseKey === "markup" || lastPhaseKey === "markup_debate") return lastPhaseKey;
+    // Otherwise the "active" phase is the one still below expected.
     for (const ph of PHASE_ORDER) {
       if (ph.key === "final_voting") continue;
       const done = (turnsByPhase[ph.key] || []).length;
@@ -990,7 +1005,9 @@ function Overview({
     return "final_voting";
   })();
   const currentPhaseLabel =
-    PHASE_ORDER.find((p) => p.key === currentPhase)?.label || currentPhase;
+    PHASE_ORDER.find((p) => p.key === currentPhase)?.label ||
+    PHASE_LABEL[currentPhase] ||
+    currentPhase;
 
   const elapsed = useMemo(() => {
     if (debate.duration_s != null) return debate.duration_s;
@@ -1833,6 +1850,9 @@ function CaucusBars({
         const t = { support: 0, oppose: 0, abstain: 0 };
         list.forEach((v) => t[v.vote]++);
         const seated = seatCounts[party] || list.length || 0;
+        // Bars divide by this — never 0, so an empty caucus renders an
+        // empty bar instead of NaN% widths.
+        const denom = Math.max(1, seated);
         return (
           <div key={party}>
             <div
@@ -1861,19 +1881,19 @@ function CaucusBars({
             >
               <div
                 style={{
-                  width: `${(t.support / seated) * 100}%`,
+                  width: `${(t.support / denom) * 100}%`,
                   background: "var(--support)",
                 }}
               />
               <div
                 style={{
-                  width: `${(t.abstain / seated) * 100}%`,
+                  width: `${(t.abstain / denom) * 100}%`,
                   background: "var(--abstain)",
                 }}
               />
               <div
                 style={{
-                  width: `${(t.oppose / seated) * 100}%`,
+                  width: `${(t.oppose / denom) * 100}%`,
                   background: "var(--oppose)",
                 }}
               />

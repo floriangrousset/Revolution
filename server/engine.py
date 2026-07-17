@@ -12,9 +12,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from src.graphs.main_graph import run_negotiation
+from src.graphs.main_graph import compute_result, run_negotiation
 from src.state.types import AgentMessage, Vote
-from src.voting.consensus import VotingRules, determine_final_result
 
 from . import db
 from .events import Event, broadcaster
@@ -255,10 +254,12 @@ def create_debate_record(
     seat_config: dict[str, int] | None = None
     if use_seat_weights:
         registry = {p["id"]: p for p in db.list_parties()}
+        # `is not None` — an explicitly configured 0 means "this caucus's
+        # ballots carry no weight", which is different from unconfigured.
         seat_config = {
             pid: registry[pid]["voting_seats"]
             for pid in resolved_parties
-            if registry.get(pid, {}).get("voting_seats")
+            if registry.get(pid, {}).get("voting_seats") is not None
         }
     record: dict[str, Any] = {
         "id": debate_id,
@@ -399,21 +400,17 @@ async def run_debate(debate_id: str) -> None:
 
     # Pull per-party votes from the dict-keyed state, falling back to the
     # legacy republican_votes / democrat_votes fields when the engine ran in
-    # back-compat mode.
+    # back-compat mode. (Used for the roll-call payload below.)
     votes_by_party: dict[str, list[Vote]] = dict(result.get("votes_by_party") or {})
     if not votes_by_party.get("republican") and result.get("republican_votes"):
         votes_by_party["republican"] = list(result["republican_votes"])
     if not votes_by_party.get("democrat") and result.get("democrat_votes"):
         votes_by_party["democrat"] = list(result["democrat_votes"])
 
-    # Prefer the VotingResult the resolution node already computed (it applied
-    # the debate's passage rule); recompute only if an older engine state
-    # didn't carry one.
-    voting = result.get("voting_result") or determine_final_result(
-        votes_by_party,
-        rules=VotingRules(rule=cfg.get("passage_rule") or "majority"),
-        seat_weights=cfg.get("seat_config"),
-    )
+    # Prefer the VotingResult the resolution node already computed; fall back
+    # to the SAME canonical tally helper the graph uses (rules + quorum +
+    # seat weights come off the state) so the two can never diverge.
+    voting = result.get("voting_result") or compute_result(result)
     final_status = "passed" if voting.passed else "rejected"
     if result.get("final_result") == "amended":
         final_status = "amended"

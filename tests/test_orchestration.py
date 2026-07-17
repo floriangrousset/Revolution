@@ -227,6 +227,38 @@ async def test_markup_round_rescues_failed_vote_as_amended(markup_stub_model):
     head_turns = [m for m in result["debate_transcript"] if m.phase == "markup_debate"]
     assert len(head_turns) == 2  # heads only, one each
 
+    # The re-vote must ACCUMULATE the docket, not erase it: the incorporated
+    # amendment keeps its round-1 sponsors in the final state.
+    sponsors = result.get("amendment_sponsors", {})
+    assert len(sponsors.get("Add a sunset clause after 5 years.", [])) == 22
+    assert "Add a sunset clause after 5 years." in result.get("amendments_proposed", [])
+
+
+async def test_markup_no_change_does_not_fabricate_amended(monkeypatch):
+    """A clerk that echoes the original text must not bump the version —
+    the debate resolves 'rejected', never a fake 'amended'."""
+
+    class _EchoClerkStub(_MarkupStubModel):
+        async def ainvoke(self, messages):
+            prompt = messages[-1].content
+            if "chamber clerk" in prompt and "Amendment to incorporate" in prompt:
+                self.calls.append(prompt)
+                return _StubResponse("Test proposal.")  # verbatim echo, no change
+            return await super().ainvoke(messages)
+
+    stub = _EchoClerkStub()
+    monkeypatch.setattr(nodes_module, "get_model", lambda: stub)
+
+    result = await run_negotiation(
+        proposal_text="Test proposal.",
+        max_rounds=1,
+        markup_rounds=1,
+    )
+    assert result["final_result"] == "rejected"
+    assert result["proposal"].current_version == 1
+    assert result.get("applied_amendments", []) == []
+    assert result["markup_rounds_done"] == 1
+
 
 async def test_markup_disabled_keeps_failed_vote_rejected(markup_stub_model):
     """Same failing stub with markup_rounds=0 (the default) must reject and

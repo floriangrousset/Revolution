@@ -75,7 +75,8 @@ def to_markdown(
     )
     voting = debate.get("voting") or {}
     if voting.get("required"):
-        lines.append(f"**Required to pass:** {voting['required']} support votes")
+        unit = "weighted support" if voting.get("weighted") else "support votes"
+        lines.append(f"**Required to pass:** {voting['required']} {unit}")
     if debate.get("created_at"):
         lines.append(f"**Created:** {debate['created_at']}")
     if debate.get("completed_at"):
@@ -307,7 +308,8 @@ def to_pdf(
     )
     voting = debate.get("voting") or {}
     if voting.get("required"):
-        summary += f" · {voting['required']} needed to pass"
+        unit = " weighted" if voting.get("weighted") else ""
+        summary += f" · {voting['required']}{unit} needed to pass"
     flow.append(Paragraph(summary, styles["body"]))
     flow.append(Spacer(1, 8))
 
