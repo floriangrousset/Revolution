@@ -29,12 +29,19 @@ interface ResultsProps {
 
 type Tab = "overview" | "breakdown" | "timeline" | "transcript" | "amendments";
 
+/** Weighted tallies are floats (seats ÷ ballots); show at most one decimal. */
+function fmtWeighted(n: number): string {
+  return Number.isInteger(n) ? String(n) : n.toFixed(1);
+}
+
 const PHASE_LABEL: Record<string, string> = {
   intro: "Opening Remarks",
   advisor_discussion: "Caucus Analysis",
   assistant_research: "Staff Research",
   synthesis: "Position Synthesis",
   cross_party_debate: "Cross-Party Debate",
+  markup: "Amendment Markup",
+  markup_debate: "Debate on the Amended Motion",
 };
 
 export function Results({ nav, param }: ResultsProps) {
@@ -43,6 +50,7 @@ export function Results({ nav, param }: ResultsProps) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [votes, setVotes] = useState<VoteRecord[]>([]);
   const [amendments, setAmendments] = useState<Amendment[]>([]);
+  const [showOriginalMotion, setShowOriginalMotion] = useState(false);
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [composingAgent, setComposingAgent] = useState<string | null>(null);
   const [livePhase, setLivePhase] = useState<string | null>(null);
@@ -194,8 +202,11 @@ export function Results({ nav, param }: ResultsProps) {
   }
 
   const tally = debate.tally;
-  const passed = debate.status === "passed";
+  const amended = debate.status === "amended";
+  const passed = debate.status === "passed" || amended;
   const changes = votes.filter((v) => v.changed);
+  const versions = debate.proposal_versions ?? [];
+  const finalVersion = versions.length ? versions[versions.length - 1] : null;
 
   const TABS: { id: Tab; label: string; icon: string; badge?: number }[] = [
     { id: "overview", label: "Overview", icon: "dashboard" },
@@ -230,7 +241,7 @@ export function Results({ nav, param }: ResultsProps) {
         style={{
           padding: "30px 34px",
           marginBottom: 24,
-          borderTop: `3px solid ${passed ? "var(--pass)" : "var(--reject)"}`,
+          borderTop: `3px solid ${amended ? "var(--gold-bright)" : passed ? "var(--pass)" : "var(--reject)"}`,
           position: "relative",
           overflow: "hidden",
         }}
@@ -253,6 +264,14 @@ export function Results({ nav, param }: ResultsProps) {
               <span className="mono" style={{ fontSize: 12, color: "var(--txt-faint)" }}>
                 {new Date(debate.created_at).toLocaleDateString()} · {debate.config.max_rounds} round
                 {debate.config.max_rounds > 1 ? "s" : ""} · {debate.config.model}
+                {debate.config.passage_rule === "three_fifths" && " · 3⁄5 cloture rule"}
+                {debate.config.passage_rule === "two_thirds" && " · 2⁄3 supermajority rule"}
+                {debate.config.use_seat_weights && " · seat-weighted"}
+                {debate.voting &&
+                  debate.voting.required > 0 &&
+                  ` · ${debate.voting.required}${debate.voting.weighted ? " weighted" : ""} to pass`}
+                {debate.voting?.weighted &&
+                  ` · weighted ${fmtWeighted(debate.voting.weighted_support ?? 0)}–${fmtWeighted(debate.voting.weighted_oppose ?? 0)}`}
               </span>
             </div>
             {editingTitle ? (
@@ -303,9 +322,44 @@ export function Results({ nav, param }: ResultsProps) {
                 {debate.title}
               </h1>
             )}
-            <p style={{ fontSize: 14, color: "var(--txt-mute)", maxWidth: 660, lineHeight: 1.6, margin: 0 }}>
-              {debate.proposal}
-            </p>
+            {finalVersion ? (
+              <>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 6px" }}>
+                  <span
+                    className="mono"
+                    style={{
+                      fontSize: 11,
+                      color: "var(--gold-bright)",
+                      border: "1px solid var(--gold-deep)",
+                      borderRadius: 999,
+                      padding: "2px 9px",
+                    }}
+                  >
+                    v{finalVersion.version} — as amended
+                  </span>
+                  <button
+                    onClick={() => setShowOriginalMotion((s) => !s)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "var(--txt-faint)",
+                      fontSize: 11.5,
+                      textDecoration: "underline",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {showOriginalMotion ? "show as amended" : "show as introduced"}
+                  </button>
+                </div>
+                <p style={{ fontSize: 14, color: "var(--txt-mute)", maxWidth: 660, lineHeight: 1.6, margin: 0 }}>
+                  {showOriginalMotion ? debate.proposal : finalVersion.text}
+                </p>
+              </>
+            ) : (
+              <p style={{ fontSize: 14, color: "var(--txt-mute)", maxWidth: 660, lineHeight: 1.6, margin: 0 }}>
+                {debate.proposal}
+              </p>
+            )}
           </div>
           <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
             <Btn kind="primary" icon="download" onClick={() => setExportOpen(true)}>
@@ -752,6 +806,31 @@ function ChamberSeatNode({
       >
         {initials}
       </text>
+      {persona.image_url && (
+        <>
+          <clipPath id={`seat-clip-${persona.id}`}>
+            <circle r={seat.r - 1} />
+          </clipPath>
+          <image
+            href={persona.image_url}
+            x={-seat.r}
+            y={-seat.r}
+            width={seat.r * 2}
+            height={seat.r * 2}
+            preserveAspectRatio="xMidYMid slice"
+            clipPath={`url(#seat-clip-${persona.id})`}
+            opacity={active ? 1 : 0.88}
+            style={{ pointerEvents: "none" }}
+          />
+          <circle
+            r={seat.r}
+            fill="none"
+            stroke={ringCol}
+            strokeWidth={active || voteCol ? 2.4 : 1.4}
+            style={{ transition: "all .3s ease" }}
+          />
+        </>
+      )}
       {voteCol && (
         <g transform={`translate(${seat.r * 0.62},${-seat.r * 0.62})`}>
           <circle r="7.5" fill="var(--ink)" stroke={voteCol} strokeWidth="1.6" />
@@ -789,18 +868,34 @@ const PHASE_SEQ: { key: string; label: string }[] = [
   { key: "final_voting", label: "Vote" },
 ];
 
-const PHASE_ORDER: { key: string; label: string; expected: (d: DebateDetail) => number }[] = [
-  { key: "intro", label: "Opening Remarks", expected: () => 2 },
-  { key: "advisor_discussion", label: "Caucus Analysis", expected: () => 8 },
-  { key: "assistant_research", label: "Staff Research", expected: () => 12 },
-  { key: "synthesis", label: "Position Synthesis", expected: () => 2 },
+// Per-caucus roster shape for the participating parties, derived from the
+// persona registry so expected-turn estimates track the real chamber (any
+// number of parties, any bench size) instead of the old 11-per-party default.
+interface RosterCounts {
+  parties: number;
+  advisors: number;
+  assistants: number;
+  agents: number;
+  /** Advisors who take the floor in cross-party debate: up to 2 per party. */
+  debateAdvisors: number;
+}
+
+const PHASE_ORDER: {
+  key: string;
+  label: string;
+  expected: (d: DebateDetail, r: RosterCounts) => number;
+}[] = [
+  { key: "intro", label: "Opening Remarks", expected: (_d, r) => r.parties },
+  { key: "advisor_discussion", label: "Caucus Analysis", expected: (_d, r) => r.advisors },
+  { key: "assistant_research", label: "Staff Research", expected: (_d, r) => r.assistants },
+  { key: "synthesis", label: "Position Synthesis", expected: (_d, r) => r.parties },
   {
     key: "cross_party_debate",
     label: "Cross-Party Debate",
-    // Roughly a half-dozen turns per round (party heads + advisors).
-    expected: (d) => Math.max(6, d.config.max_rounds * 4),
+    // Per round: every party head plus up to two advisors per party.
+    expected: (d, r) => Math.max(1, d.config.max_rounds) * (r.parties + r.debateAdvisors),
   },
-  { key: "final_voting", label: "Final Vote", expected: () => 22 },
+  { key: "final_voting", label: "Final Vote", expected: (_d, r) => r.agents },
 ];
 
 function Overview({
@@ -846,6 +941,28 @@ function Overview({
     () => Object.fromEntries(personas.map((p) => [p.id, p])),
     [personas],
   );
+  // Roster of the participating caucuses — drives expected-turn estimates and
+  // the per-party seat denominators for any party mix.
+  const roster = useMemo<RosterCounts>(() => {
+    const seated = personas.filter((p) => partyIds.includes(p.party));
+    const advisorsPerParty = partyIds.map(
+      (id) => seated.filter((p) => p.party === id && p.role === "advisor").length,
+    );
+    return {
+      parties: partyIds.length,
+      advisors: advisorsPerParty.reduce((a, b) => a + b, 0),
+      assistants: seated.filter((p) => p.role === "assistant").length,
+      agents: seated.length,
+      debateAdvisors: advisorsPerParty.reduce((a, b) => a + Math.min(2, b), 0),
+    };
+  }, [personas, partyIds]);
+  const seatCounts = useMemo(
+    () =>
+      Object.fromEntries(
+        partyIds.map((id) => [id, personas.filter((p) => p.party === id).length]),
+      ),
+    [personas, partyIds],
+  );
   const voteMap = useMemo(
     () => Object.fromEntries(votes.map((v) => [v.agent, v.vote])),
     [votes],
@@ -864,20 +981,33 @@ function Overview({
   const daisLabel = PHASE_LABEL[activePhase] || activePhase || "The Floor";
 
   const totalDelivered = speakerTurns.length;
+  // Markup turns are conditional (only when a vote fails), so they join the
+  // expectation as they actually happen instead of being pre-budgeted.
+  const markupDelivered =
+    (turnsByPhase["markup"] || []).length + (turnsByPhase["markup_debate"] || []).length;
+  // Expected speech turns — every phase except the vote roll call.
   const totalExpected =
-    PHASE_ORDER.reduce((acc, ph) => acc + ph.expected(debate), 0) - 22; // expected speech turns (excl. votes)
+    PHASE_ORDER.reduce(
+      (acc, ph) => (ph.key === "final_voting" ? acc : acc + ph.expected(debate, roster)),
+      0,
+    ) + markupDelivered;
   const currentPhase = (() => {
-    // The "active" phase is the one whose count is still below expected.
+    // A markup cycle re-opens the floor after the vote — reflect it live.
+    const lastPhaseKey = lastSpeakerTurn?.phase;
+    if (lastPhaseKey === "markup" || lastPhaseKey === "markup_debate") return lastPhaseKey;
+    // Otherwise the "active" phase is the one still below expected.
     for (const ph of PHASE_ORDER) {
       if (ph.key === "final_voting") continue;
       const done = (turnsByPhase[ph.key] || []).length;
-      const expected = ph.expected(debate);
+      const expected = ph.expected(debate, roster);
       if (done < expected) return ph.key;
     }
     return "final_voting";
   })();
   const currentPhaseLabel =
-    PHASE_ORDER.find((p) => p.key === currentPhase)?.label || currentPhase;
+    PHASE_ORDER.find((p) => p.key === currentPhase)?.label ||
+    PHASE_LABEL[currentPhase] ||
+    currentPhase;
 
   const elapsed = useMemo(() => {
     if (debate.duration_s != null) return debate.duration_s;
@@ -929,7 +1059,7 @@ function Overview({
         <StatTile
           label="Votes cast"
           value={`${votes.length}`}
-          sub={`of ${debate.config.parties.length * 11} agents`}
+          sub={`of ${roster.agents} agents`}
           icon="vote"
           accent={votes.length > 0 ? "var(--gold-bright)" : undefined}
         />
@@ -957,7 +1087,7 @@ function Overview({
             {PHASE_ORDER.map((ph) => {
               const done =
                 ph.key === "final_voting" ? votes.length : (turnsByPhase[ph.key] || []).length;
-              const expected = ph.expected(debate);
+              const expected = ph.expected(debate, roster);
               const active = ph.key === currentPhase && isLive;
               const complete = done >= expected;
               const pct = Math.min(100, Math.round((done / Math.max(1, expected)) * 100));
@@ -1104,7 +1234,7 @@ function Overview({
             <div className="eyebrow" style={{ marginBottom: 14 }}>
               Caucus split
             </div>
-            <CaucusBars votes={votes} debate={debate} />
+            <CaucusBars votes={votes} debate={debate} seatCounts={seatCounts} />
           </Card>
         </div>
       </div>
@@ -1578,9 +1708,10 @@ function SpeakerCard({
 }
 
 function FinalMotionCard({ debate }: { debate: DebateDetail }) {
-  const passed = debate.status === "passed";
+  const amended = debate.status === "amended";
+  const passed = debate.status === "passed" || amended;
   const tally = debate.tally;
-  const color = passed ? "var(--pass)" : "var(--reject)";
+  const color = amended ? "var(--gold-bright)" : passed ? "var(--pass)" : "var(--reject)";
   return (
     <div
       style={{
@@ -1617,7 +1748,7 @@ function FinalMotionCard({ debate }: { debate: DebateDetail }) {
           className="eyebrow"
           style={{ color, marginBottom: 4, whiteSpace: "nowrap" }}
         >
-          Motion {passed ? "Carries" : "Fails"}
+          Motion {amended ? "Carries as Amended" : passed ? "Carries" : "Fails"}
         </div>
         <div
           className="serif"
@@ -1691,7 +1822,15 @@ function StatTile({
   );
 }
 
-function CaucusBars({ votes, debate }: { votes: VoteRecord[]; debate: DebateDetail }) {
+function CaucusBars({
+  votes,
+  debate,
+  seatCounts,
+}: {
+  votes: VoteRecord[];
+  debate: DebateDetail;
+  seatCounts: Record<string, number>;
+}) {
   // Show every party that either (a) was on the launch's `parties` list, or
   // (b) actually cast a vote. This way custom parties surface here too if
   // they ever start voting in the engine.
@@ -1710,7 +1849,10 @@ function CaucusBars({ votes, debate }: { votes: VoteRecord[]; debate: DebateDeta
         const list = votes.filter((v) => v.party === party);
         const t = { support: 0, oppose: 0, abstain: 0 };
         list.forEach((v) => t[v.vote]++);
-        const seated = list.length > 0 ? Math.max(11, list.length) : 11;
+        const seated = seatCounts[party] || list.length || 0;
+        // Bars divide by this — never 0, so an empty caucus renders an
+        // empty bar instead of NaN% widths.
+        const denom = Math.max(1, seated);
         return (
           <div key={party}>
             <div
@@ -1739,19 +1881,19 @@ function CaucusBars({ votes, debate }: { votes: VoteRecord[]; debate: DebateDeta
             >
               <div
                 style={{
-                  width: `${(t.support / seated) * 100}%`,
+                  width: `${(t.support / denom) * 100}%`,
                   background: "var(--support)",
                 }}
               />
               <div
                 style={{
-                  width: `${(t.abstain / seated) * 100}%`,
+                  width: `${(t.abstain / denom) * 100}%`,
                   background: "var(--abstain)",
                 }}
               />
               <div
                 style={{
-                  width: `${(t.oppose / seated) * 100}%`,
+                  width: `${(t.oppose / denom) * 100}%`,
                   background: "var(--oppose)",
                 }}
               />
@@ -1953,6 +2095,15 @@ function VoteCard({ v }: { v: VoteRecord }) {
             {ROLE_META[p.role]?.label || p.role}
           </div>
         </div>
+        {v.weight != null && (
+          <span
+            className="mono"
+            title="Seat weight this ballot carried"
+            style={{ fontSize: 11, color: "var(--txt-faint)" }}
+          >
+            ×{v.weight.toFixed(1)}
+          </span>
+        )}
         <VoteTag vote={v.vote} sm />
       </div>
       {v.reasoning && (

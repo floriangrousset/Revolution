@@ -35,6 +35,23 @@
   "negotiation_posture": "pragmatist",
   "constituency": "Massachusetts suburban families (MA-05), the National Education Association, and the House Democratic whip operation.",
   "personality_assessment": "",
-  "sources": [],
-  "persona_last_updated": ""
+  "sources": [
+    {
+      "title": "Katherine M. Clark | Congress.gov",
+      "url": "https://www.congress.gov/member/katherine-clark/C001101",
+      "date": "2026-07-17",
+      "source_type": "government",
+      "description": "Official Library of Congress legislative profile for House Minority Whip Katherine Clark of Massachusetts's Fifth District: committee assignments and sponsored legislation."
+    },
+    {
+      "title": "Katherine Clark - Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Katherine_Clark",
+      "date": "2026-07-17",
+      "source_type": "encyclopedia",
+      "description": "Encyclopedic biography and career overview of Katherine Clark."
+    }
+  ],
+  "persona_last_updated": "2026-07-17",
+  "image_url": "/portraits/dem_asst_education.jpg",
+  "image_attribution": "Official congressional portrait, U.S. Government Publishing Office (public domain)"
 }

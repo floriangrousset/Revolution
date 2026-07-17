@@ -46,5 +46,7 @@
       "description": "Party history, fusion-voting strategy, multi-state expansion."
     }
   ],
-  "persona_last_updated": "2026-06-16"
+  "persona_last_updated": "2026-06-16",
+  "image_url": "/portraits/wfp_head_mitchell.jpg",
+  "image_attribution": "Photo: Morgan.rice.bassline.design, CC BY 4.0, via Wikimedia Commons"
 }

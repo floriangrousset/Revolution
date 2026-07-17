@@ -187,6 +187,21 @@ class TestProductionAgents:
             assert agent.name in prompt
             assert agent.philosophy[:40] in prompt
 
+    def test_no_executive_branch_titles(self):
+        """Every seeded persona must be a sitting member of Congress.
+
+        Guards against executive-branch drift: when a member becomes Vice
+        President or a cabinet Secretary (e.g. JD Vance, Marco Rubio after
+        January 2025), the persona slot must be re-assigned to a sitting
+        legislator rather than keeping the departed member.
+        """
+        for agent in REPUBLICAN_AGENTS + DEMOCRAT_AGENTS:
+            for forbidden in ("Vice President", "Secretary of"):
+                assert forbidden not in agent.title, (
+                    f"{agent.id}: title {agent.title!r} contains {forbidden!r} -- "
+                    "persona has drifted into the executive branch"
+                )
+
 
 class TestRegistry:
     def test_resolve_id_falls_back_to_raw_for_unregistered(self):

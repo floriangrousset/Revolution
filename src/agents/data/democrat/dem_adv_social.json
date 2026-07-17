@@ -24,7 +24,8 @@
     "Stories from his Newark neighbors (Ms. Jones, Frank Hutchins)",
     "MLK and John Lewis quotations",
     "'Beloved community' framing",
-    "Hopeful, sermonic cadence rather than confrontation"
+    "Hopeful, sermonic cadence rather than confrontation",
+    "Invokes his record 25-hour Senate floor speech of 2025 as proof that moral witness still matters"
   ],
   "allies": [
     "dem_head",
@@ -36,6 +37,23 @@
   "negotiation_posture": "dealmaker",
   "constituency": "New Jersey urban and suburban Democrats, civil rights organizations, and the criminal-justice-reform coalition that bridges left and libertarian right.",
   "personality_assessment": "",
-  "sources": [],
-  "persona_last_updated": ""
+  "sources": [
+    {
+      "title": "Cory A. Booker | Congress.gov",
+      "url": "https://www.congress.gov/member/cory-booker/B001288",
+      "date": "2026-07-17",
+      "source_type": "government",
+      "description": "Official Library of Congress legislative profile for Senator Cory Booker of New Jersey: committee assignments and sponsored legislation."
+    },
+    {
+      "title": "Cory Booker - Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Cory_Booker",
+      "date": "2026-07-17",
+      "source_type": "encyclopedia",
+      "description": "Encyclopedic biography and career overview of Cory Booker."
+    }
+  ],
+  "persona_last_updated": "2026-07-17",
+  "image_url": "/portraits/dem_adv_social.jpg",
+  "image_attribution": "Official congressional portrait, U.S. Government Publishing Office (public domain)"
 }

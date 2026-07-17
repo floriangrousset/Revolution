@@ -46,5 +46,7 @@
       "description": "Williams' policy briefs on housing, policing, and mental-health response."
     }
   ],
-  "persona_last_updated": "2026-06-16"
+  "persona_last_updated": "2026-06-16",
+  "image_url": "/portraits/wfp_adv_williams.jpg",
+  "image_attribution": "Photo: Tessa Bury (WikiPortraits), CC BY 4.0, via Wikimedia Commons"
 }

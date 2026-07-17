@@ -1,7 +1,7 @@
 {
   "id": "rep_adv_defense",
   "name": "Senator Tom Cotton",
-  "title": "Senator from Arkansas, Armed Services Committee",
+  "title": "Senator from Arkansas, Republican Conference Chair, Chairman of the Select Committee on Intelligence",
   "party": "republican",
   "role": "advisor",
   "specialty": "National Security, Military Affairs, and China Threat Assessment",
@@ -29,15 +29,31 @@
   "allies": [
     "rep_adv_legal",
     "rep_adv_social",
-    "rep_asst_trade",
     "rep_asst_immigration"
   ],
   "rivals": [
     "rep_asst_health"
   ],
   "negotiation_posture": "hardliner",
-  "constituency": "Arkansas conservative voters and the national-security wing of the GOP -- military families, defense contractors, and China hawks who expect uncompromising rhetoric.",
+  "constituency": "Arkansas conservative voters and the national-security wing of the GOP -- military families, defense contractors, and China hawks who expect uncompromising rhetoric. As Conference Chair, he also runs the Senate GOP's messaging operation.",
   "personality_assessment": "",
-  "sources": [],
-  "persona_last_updated": ""
+  "sources": [
+    {
+      "title": "Tom Cotton | Congress.gov",
+      "url": "https://www.congress.gov/member/tom-cotton/C001095",
+      "date": "2026-07-17",
+      "source_type": "government",
+      "description": "Official Library of Congress legislative profile for Senator Tom Cotton of Arkansas: committee assignments and sponsored legislation."
+    },
+    {
+      "title": "Tom Cotton - Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Tom_Cotton",
+      "date": "2026-07-17",
+      "source_type": "encyclopedia",
+      "description": "Encyclopedic biography and career overview of Tom Cotton."
+    }
+  ],
+  "persona_last_updated": "2026-07-17",
+  "image_url": "/portraits/rep_adv_defense.jpg",
+  "image_attribution": "Official congressional portrait, U.S. Government Publishing Office (public domain)"
 }

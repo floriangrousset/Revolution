@@ -56,7 +56,7 @@ function PartyManager({ nav }: { nav: PartiesProps["nav"] }) {
       <SectionTitle
         eyebrow={`${parties.length} caucus${parties.length === 1 ? "" : "es"} registered`}
         title="Party Manager"
-        sub="Each party carries an ideology, founding year, motto, and color identity. The engine seats Democrats and Republicans in the chamber today; custom parties hold personas in the registry and surface across the rest of the app."
+        sub="Each party carries an ideology, founding year, motto, and color identity. Democrats and Republicans ship as the seeded chamber; every registered caucus can seat personas and take the floor in any debate you convene."
         right={
           <Btn kind="primary" icon="plus" onClick={() => setAddOpen(true)}>
             New party

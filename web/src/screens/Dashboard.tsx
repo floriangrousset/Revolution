@@ -65,8 +65,9 @@ export function Dashboard({ nav }: DashboardProps) {
               margin: "0 0 24px",
             }}
           >
-            Twenty-two agentic AI personas — eleven per party — deliberate, debate across the aisle,
-            and vote. Watch positions form, amendments emerge, and minds change in real time.
+            A chamber of agentic AI personas — organized into caucuses of party heads,
+            advisors, and assistants — deliberates, debates across the aisle, and votes.
+            Watch positions form, amendments emerge, and minds change in real time.
           </p>
           <div style={{ display: "flex", gap: 12 }}>
             <Btn kind="primary" icon="launch" size="lg" onClick={() => nav("launch")}>

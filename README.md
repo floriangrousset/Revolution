@@ -19,7 +19,7 @@ Revolution is an **agentic experiment** that simulates political negotiations us
 
 ![The Floor — Revolution's dashboard with hero, chamber composition, KPIs, and legislative record](docs/images/1-dashboard.png)
 
-> 🪧 The default chamber seats Democrats vs. Republicans, but you can register additional caucuses from the [Party Manager](docs/USER_GUIDE.md#7-️-party-manager) and seed them with your own personas. The engine currently runs the deliberation flow for the two seeded caucuses; extending it to dynamic parties is on the [roadmap](#-contributing).
+> 🪧 The default chamber seats Democrats vs. Republicans, but any registered caucus can join a debate: toggle it on from the [Launch screen](docs/USER_GUIDE.md#4--launch-a-debate) and the deliberation flow runs it end-to-end alongside the others. Seven bench caucuses (Libertarian, Green, Constitution, Reform, Forward, DSA, Working Families) ship with real-politician personas, and you can register more from the [Party Manager](docs/USER_GUIDE.md#7-️-party-manager).
 
 ### 🌀 The deliberation pipeline
 
@@ -34,9 +34,12 @@ flowchart LR
     end
     Caucus --> Debate[⚔️ Cross-party debate<br/>1–5 rounds · amendments]
     Debate --> Vote[🗳️ Final vote<br/>persuasion mechanic ✨]
-    Vote --> Result{Outcome}
-    Result -->|majority| Passed([✅ Passed])
-    Result -->|minority| Rejected([❌ Rejected])
+    Vote --> Result{Passage rule<br/>majority · 3/5 · 2/3}
+    Result -->|meets threshold| Passed([✅ Passed])
+    Result -->|fails + markup on| Markup[📜 Markup round<br/>top amendment incorporated]
+    Markup --> Vote
+    Result -->|fails| Rejected([❌ Rejected])
+    Result -->|passes after markup| Amended([📜 Passed as amended])
 ```
 
 After the gavel falls, every debate gets a tabbed results page — overview hemicycle, per-agent vote breakdown, persuasion timeline, full transcript, and amendments — plus one-click PDF / Markdown / JSON export.
@@ -52,6 +55,11 @@ After the gavel falls, every debate gets a tabbed results page — overview hemi
 | 🎭 **Richly-drawn personas** | Every agent carries a documented philosophy, communication style, red lines, rhetorical signatures, and per-agent relationships |
 | 🏛️ **Party hierarchy** | Party Head → Senior Advisors → Policy Assistants, with the head synthesising the caucus position |
 | 🔄 **Multi-round debates** | 1–5 configurable cross-party negotiation rounds with amendment tabling |
+| 🖼️ **Real portraits** | Official public-domain congressional portraits and license-verified Wikimedia photos for all personas ([attributions](web/public/portraits/ATTRIBUTIONS.md)) |
+| ⚖️ **Passage rules** | Simple majority, 3⁄5 cloture, or 2⁄3 supermajority — integer-exact math, chosen per debate |
+| 🪑 **Seat-weighted voting** | Optionally weight each caucus's ballots by its real chamber strength (2026 splits ship as defaults) |
+| 📜 **Amendment markup round** | A failed vote can trigger a markup: the most-sponsored amendment is incorporated, heads debate the revised text, and the chamber re-votes — motions can pass *as amended* |
+| 🗳️ **Structured ballots** | Votes are tool-forced structured output — malformed replies can't silently become abstentions, and every amendment records its sponsors |
 | 🤝 **Persuasion mechanic** | Agents can change their vote during deliberation; the Persuasion Timeline tells the story |
 | 🎨 **Beautiful CLI** | Party-colored panels rendered with Rich |
 | 🌐 **Live web app** | FastAPI backend + React/Vite frontend with a live hemicycle, SSE streaming, and per-debate dashboards |
@@ -69,7 +77,9 @@ Want to see what a full negotiation looks like? Check out this example session:
 
 ## 🎒 The Seeded Roster (Democrats + Republicans)
 
-These 22 personas ship as the default chamber and are what the LangGraph deliberation flow runs end-to-end today. Many more (Libertarians, Greens, Constitutionalists, Reformers, Forwards, Democratic Socialists, Working Families — each with their own real-politician personas) are available in the [Persona Manager](docs/USER_GUIDE.md#6--persona-manager).
+These 22 personas ship as the default chamber, fact-checked against the 119th Congress as of **July 2026**. Many more (Libertarians, Greens, Constitutionalists, Reformers, Forwards, Democratic Socialists, Working Families — each with their own real-politician personas) are available in the [Persona Manager](docs/USER_GUIDE.md#6--persona-manager).
+
+> ♻️ **Upgrading an existing install?** The runtime copy under `data/personas/` is seeded once and never overwritten. To pick up the refreshed roster, delete `data/personas/democrat` and `data/personas/republican` and restart the server (portraits backfill automatically; custom personas in other folders are untouched).
 
 ### 🔴 Republican Party (11 agents)
 
@@ -77,15 +87,15 @@ These 22 personas ship as the default chamber and are what the LangGraph deliber
 |------|---------|----------|--------------|
 | 🎖️ Party Head | Mike Johnson | Speaker of the House | Legislative Strategy |
 | 🎓 Advisor | John Thune | Senate Majority Leader | Tax/Fiscal Policy |
-| 🎓 Advisor | Tom Cotton | Senator from Arkansas | National Security |
+| 🎓 Advisor | Tom Cotton | Conference Chair, Intelligence Chairman | National Security |
 | 🎓 Advisor | Josh Hawley | Senator from Missouri | Cultural Conservatism |
-| 🎓 Advisor | Ted Cruz | Senator from Texas | Constitutional Law |
+| 🎓 Advisor | Ted Cruz | Commerce Committee Chairman | Constitutional Law |
 | 📊 Assistant | Steve Scalise | House Majority Leader | Federal Budget |
-| 📊 Assistant | Marco Rubio | Secretary of State | International Trade |
+| 📊 Assistant | Adrian Smith | Ways & Means Trade Subcommittee Chairman | International Trade |
 | 📊 Assistant | John Barrasso | Senate Majority Whip | Energy Policy |
-| 📊 Assistant | Rand Paul | Senator from Kentucky | Healthcare Policy |
-| 📊 Assistant | JD Vance | Vice President | Immigration Policy |
-| 📊 Assistant | Lindsey Graham | Senator from South Carolina | Policy Strategy |
+| 📊 Assistant | Rand Paul | Homeland Security Committee Chairman | Healthcare Policy |
+| 📊 Assistant | Katie Britt | Senator from Alabama | Immigration Policy |
+| 📊 Assistant | Todd Young | Senator from Indiana | Policy Strategy |
 
 ### 🔵 Democrat Party (11 agents)
 
@@ -303,12 +313,14 @@ Each party runs an internal subgraph:
 
 ## 🤝 Contributing
 
-Contributions are welcome! On the roadmap:
+Contributions are welcome! On the roadmap (see [docs/REALISM.md](docs/REALISM.md) for the full realism analysis behind these):
 
-- 🗳️ **Extend the LangGraph flow to dynamic parties.** The Persona Manager, Party Manager, Relationship Graph, Launch screen, and persona storage already support N caucuses (Libertarian 🟡, Green 🟢, Constitution, Reform, Forward, Democratic Socialists, Working Families …). The deliberation flow itself is currently hard-coded to Democrats + Republicans — wiring it through to custom caucuses is the single biggest unlock.
+- 🏛️ **Committee stage.** Generalize the markup node into a pre-floor committee subgraph — a subset of agents marks the motion up *before* it ever reaches the floor.
+- 🏦 **Bicameralism.** Two sequential chamber runs with different seat configs (House 218–212, Senate 53–47) plus a reconciliation step.
+- ✍️ **Veto & override.** A president actor after passage, with an automatic 2⁄3 override re-vote — the passage-rule machinery already supports it.
+- 🤫 **Whip counts.** Give party heads the initial-vote tally as a "whip count" signal they can act on during debate.
 - 🔊 **Token-level streaming for the live arena.** Today the SSE stream emits one event per completed turn (see the `astream` hook in `src/graphs/nodes.py`); finer-grained streaming would make the "composing remarks…" indicator feel even more alive.
 - 🎭 **More personas.** Add real-politician profiles to the bench caucuses, or invent new ones entirely.
-- 📜 **Amendment negotiation logic.** Today amendments are recorded but not folded back into the motion text — making them first-class state would unlock a richer back-and-forth.
 - 📊 **Historical voting record tracking.** A leaderboard that shows which agents flip most, which caucuses pass the most motions, which postures (dealmaker vs. hardliner) actually win.
 
 ## 📄 License

@@ -35,6 +35,8 @@ export interface PersonaSummary {
   specialty: string;
   negotiation_posture: NegotiationPosture;
   persona_last_updated: string;
+  image_url?: string;
+  image_attribution?: string;
 }
 
 export interface Persona extends PersonaSummary {
@@ -69,6 +71,9 @@ export interface PartyEntry {
   national_committee_chair?: string;
   /** Short summary of the party's current electoral footprint. */
   electoral_strength?: string;
+  /** Configured real-chamber seat count used for seat-weighted voting.
+      Distinct from `seats`, which counts seated personas. */
+  voting_seats?: number | null;
   created_at?: string | null;
 }
 
@@ -116,6 +121,8 @@ export interface Turn {
     | "assistant_research"
     | "synthesis"
     | "cross_party_debate"
+    | "markup"
+    | "markup_debate"
     | "advisor"
     | "research"
     | "debate";
@@ -133,11 +140,16 @@ export interface VoteRecord {
   changed: boolean;
   from?: VoteValue | null;
   amendments?: string[];
+  /** Seat weight this ballot carried, when the debate was seat-weighted. */
+  weight?: number;
 }
 
 export interface Amendment {
   id: string;
   text: string;
-  by: string;
-  status: "proposed" | "accepted" | "contested" | "rejected";
+  /** Primary sponsor's agent id (first ballot that proposed it), or null. */
+  by: string | null;
+  /** All agent ids whose ballots proposed this amendment. */
+  sponsors?: string[];
+  status: "proposed" | "accepted" | "contested" | "rejected" | "incorporated";
 }

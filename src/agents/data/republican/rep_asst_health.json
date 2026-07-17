@@ -1,7 +1,7 @@
 {
   "id": "rep_asst_health",
   "name": "Senator Rand Paul",
-  "title": "Senator from Kentucky",
+  "title": "Senator from Kentucky, Chairman of the Homeland Security and Governmental Affairs Committee",
   "party": "republican",
   "role": "assistant",
   "specialty": "Healthcare Policy, Government Overreach in Medicine, and Individual Liberty",
@@ -39,6 +39,23 @@
   "negotiation_posture": "bomb_thrower",
   "constituency": "Kentucky libertarian-leaning conservatives and the national libertarian movement; answers more to principle and his father's network than to GOP leadership.",
   "personality_assessment": "",
-  "sources": [],
-  "persona_last_updated": ""
+  "sources": [
+    {
+      "title": "Rand Paul | Congress.gov",
+      "url": "https://www.congress.gov/member/rand-paul/P000603",
+      "date": "2026-07-17",
+      "source_type": "government",
+      "description": "Official Library of Congress legislative profile for Senator Rand Paul of Kentucky: committee assignments and sponsored legislation."
+    },
+    {
+      "title": "Rand Paul - Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Rand_Paul",
+      "date": "2026-07-17",
+      "source_type": "encyclopedia",
+      "description": "Encyclopedic biography and career overview of Rand Paul."
+    }
+  ],
+  "persona_last_updated": "2026-07-17",
+  "image_url": "/portraits/rep_asst_health.jpg",
+  "image_attribution": "Official congressional portrait, U.S. Government Publishing Office (public domain)"
 }

@@ -21,14 +21,32 @@ export interface DebateDetail {
     model: string;
     temperature: number;
     parties: string[];
+    passage_rule?: "majority" | "three_fifths" | "two_thirds";
+    use_seat_weights?: boolean;
+    /** Party id → configured seats, snapshotted at debate creation. */
+    seat_config?: Record<string, number> | null;
+    /** Markup cycles a failed vote may trigger (0 = amendments never applied). */
+    markup_rounds?: number;
   };
   status: DebateSummary["status"];
   result: string | null;
   tally: { support: number; oppose: number; abstain: number };
+  /** Written at completion: the rule applied and the support needed to pass. */
+  voting?: {
+    rule: string;
+    required: number;
+    margin: string;
+    bipartisan: boolean;
+    weighted?: boolean;
+    weighted_support?: number;
+    weighted_oppose?: number;
+  };
   created_at: string;
   completed_at: string | null;
   duration_s?: number;
   error?: string;
+  /** Present when markup rewrote the motion: as-introduced + as-amended. */
+  proposal_versions?: { version: number; text: string; applied_amendments: string[] }[];
 }
 
 export interface CreateDebateRequest {
@@ -40,6 +58,12 @@ export interface CreateDebateRequest {
   /** Optional; falls back to Settings.default_temperature on the server. */
   temperature?: number;
   parties?: string[];
+  /** Optional; falls back to the settings-store default (majority). */
+  passage_rule?: "majority" | "three_fifths" | "two_thirds";
+  /** Weight each party's ballots by its configured voting_seats. */
+  use_seat_weights?: boolean;
+  /** Allow N markup cycles when the vote fails and amendments exist (0-2). */
+  markup_rounds?: number;
 }
 
 export interface CreateDebateResponse {

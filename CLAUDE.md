@@ -41,10 +41,14 @@ Revolution is a multi-agent political negotiation system using LangGraph for orc
 
 ### LangGraph Structure
 
-**Main Graph** (`src/graphs/main_graph.py`):
+**Main Graph** (`src/graphs/main_graph.py`) — one deliberation node is generated per participating party (default democrat + republican):
 ```
-START → receive_proposal → republican_deliberation → democrat_deliberation
-      → cross_party_debate → [conditional: continue/vote] → final_voting → resolution → END
+START → receive_proposal → <party>_deliberation (×N, seating order) → initial_voting
+      → cross_party_debate → [conditional: continue/vote] → final_voting
+      → [conditional: resolve/markup] → resolution → END
+
+markup branch (bounded; only when the vote failed, amendments exist,
+and markup_rounds remain):  final_voting → markup → markup_debate → final_voting
 ```
 
 **Party Subgraph** (`src/graphs/party_graph.py`):
@@ -91,7 +95,13 @@ Nodes accept optional `display_callback` for real-time CLI output.
 
 ### Voting & Result
 
-`src/voting/consensus.py` aggregates votes into a `VotingResult` (per-party tallies, `passed`, `bipartisan`, `margin`). Called from `main.py` after the graph completes.
+`src/voting/consensus.py` aggregates votes into a `VotingResult` (per-party tallies, `passed`, `bipartisan`, `margin`, `rule`, `required`, weighted totals).
+
+- **Ballots are structured output**: `cast_ballot` in `src/graphs/nodes.py` forces a pydantic `VoteBallot` (`src/voting/ballot.py`) via `with_structured_output`, retries once, falls back to the legacy `parse_vote` text parser, and only then records an explicit `[unparsed]` abstain. Test stubs without `with_structured_output` go straight to the text path.
+- **Passage rules**: `VotingRules(rule=majority|three_fifths|two_thirds, quorum=...)` — integer/Fraction-exact comparisons, never float thresholds. Per-debate via `run_negotiation(passage_rule=...)`; default from the settings store (`voting.passage_rule`).
+- **Seat weighting**: `determine_final_result(..., seat_weights={party: seats})` weights each ballot by `seats / ballots_cast` (exact `Fraction`). The debate config snapshots registry seats at creation (`seat_config`), so later registry edits don't change old debates.
+- **Markup loop**: when a final vote fails, amendments exist, and `markup_rounds` remain, the graph routes `final_voting → markup → markup_debate (heads only) → final_voting`. The clerk incorporates the most-sponsored amendment (`AMENDMENT_MARKUP_PROMPT`), bumps `Proposal.current_version`, and a subsequent pass can resolve as `"amended"`. Loop bound lives in state (`markup_rounds_done`).
+- The resolution node stores its full `VotingResult` on the state (`voting_result`); `server/engine.py` and `src/main.py` read it from there instead of recomputing.
 
 ## Key Patterns
 
@@ -137,5 +147,6 @@ Added on top of the engine without rewriting it. The CLI continues to work uncha
 
 ### Multi-party notes
 
-- `data/parties.json` is the source of truth. Anything beyond `democrat` + `republican` is "custom" — UI surfaces it everywhere, but the LangGraph deliberation flow currently only knows the two seeded caucuses. Extending the flow to dynamic parties is a follow-up.
+- `data/parties.json` is the source of truth. The LangGraph flow is N-party: `build_main_graph(parties=[...])` generates one deliberation node per party id, and the Launch screen lets users toggle any registered caucus into a debate. `democrat` + `republican` remain the non-deletable seeded chamber and the default when no parties are passed.
+- Party rows carry `voting_seats` (configured chamber strength for seat-weighted voting — democrat 212 / republican 218 by default, July-2026 House split) distinct from the derived `seats` API field (persona-file count).
 - `Agent.party` was loosened from a closed `Literal` to a non-empty `str` (see `src/agents/base.py`) so custom-party personas validate. The parties registry decides which ids are recognized at the UI layer.

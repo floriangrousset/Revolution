@@ -19,10 +19,19 @@ const SAMPLES = [
   "Should the U.S. adopt a Green New Deal framework targeting net-zero by 2040?",
 ];
 
+const PASSAGE_RULES: { id: "majority" | "three_fifths" | "two_thirds"; label: string; hint: string }[] = [
+  { id: "majority", label: "Simple majority", hint: "More support than oppose" },
+  { id: "three_fifths", label: "3⁄5 cloture", hint: "60% of decisive votes" },
+  { id: "two_thirds", label: "2⁄3 supermajority", hint: "67% of decisive votes" },
+];
+
 export function Launch({ nav }: LaunchProps) {
   const [text, setText] = useState("");
   const [rounds, setRounds] = useState(2);
   const [temp, setTemp] = useState(0.8);
+  const [passageRule, setPassageRule] = useState<"majority" | "three_fifths" | "two_thirds">("majority");
+  const [seatWeights, setSeatWeights] = useState(false);
+  const [markupRound, setMarkupRound] = useState(false);
   const [parties, setParties] = useState<Record<string, boolean>>({
     democrat: true,
     republican: true,
@@ -61,6 +70,9 @@ export function Launch({ nav }: LaunchProps) {
         max_rounds: rounds,
         temperature: temp,
         parties: chosenParties,
+        passage_rule: passageRule,
+        use_seat_weights: seatWeights,
+        markup_rounds: markupRound ? 1 : 0,
       });
       nav("results", resp.id);
     } catch (e) {
@@ -189,6 +201,106 @@ export function Launch({ nav }: LaunchProps) {
               </div>
             </div>
 
+            <div style={{ marginBottom: 24 }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  marginBottom: 11,
+                }}
+              >
+                <span style={{ fontSize: 13.5, fontWeight: 600 }}>Passage rule</span>
+                <span className="mono" style={{ fontSize: 13, color: "var(--gold-bright)" }}>
+                  {PASSAGE_RULES.find((r) => r.id === passageRule)?.label}
+                </span>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                {PASSAGE_RULES.map((r) => (
+                  <button
+                    key={r.id}
+                    onClick={() => setPassageRule(r.id)}
+                    style={{
+                      flex: 1,
+                      padding: "10px 0",
+                      borderRadius: "var(--r-md)",
+                      fontWeight: 700,
+                      fontSize: 13,
+                      fontFamily: "var(--serif)",
+                      background:
+                        passageRule === r.id
+                          ? "linear-gradient(180deg,var(--gold),var(--gold-deep))"
+                          : "var(--ink)",
+                      color: passageRule === r.id ? "#1B1405" : "var(--txt-mute)",
+                      border: `1px solid ${passageRule === r.id ? "var(--gold-deep)" : "var(--ink-line)"}`,
+                      transition: "all .15s ease",
+                    }}
+                    title={r.hint}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+              <div style={{ fontSize: 12, color: "var(--txt-faint)", marginTop: 10 }}>
+                {passageRule === "majority"
+                  ? "The motion passes when support outnumbers opposition."
+                  : passageRule === "three_fifths"
+                    ? "Modeled on Senate cloture — 3⁄5 of decisive votes must support."
+                    : "Modeled on veto-override votes — 2⁄3 of decisive votes must support."}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  cursor: "pointer",
+                  fontSize: 13.5,
+                  fontWeight: 600,
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={seatWeights}
+                  onChange={(e) => setSeatWeights(e.target.checked)}
+                  style={{ accentColor: T.gold, width: 15, height: 15 }}
+                />
+                Seat-weighted voting
+              </label>
+              <div style={{ fontSize: 12, color: "var(--txt-faint)", marginTop: 8, paddingLeft: 25 }}>
+                Weight each caucus's ballots by its real chamber strength (the party's
+                configured seat count) instead of one agent, one vote. Parties without a
+                configured seat count vote unweighted.
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  cursor: "pointer",
+                  fontSize: 13.5,
+                  fontWeight: 600,
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={markupRound}
+                  onChange={(e) => setMarkupRound(e.target.checked)}
+                  style={{ accentColor: T.gold, width: 15, height: 15 }}
+                />
+                Allow one markup round
+              </label>
+              <div style={{ fontSize: 12, color: "var(--txt-faint)", marginTop: 8, paddingLeft: 25 }}>
+                If the motion fails and amendments were tabled, the clerk incorporates the
+                most-sponsored amendment, the heads debate the amended text, and the chamber
+                re-votes. A motion that then passes is recorded as “amended”.
+              </div>
+            </div>
+
             <div>
               <div
                 style={{
@@ -294,9 +406,8 @@ export function Launch({ nav }: LaunchProps) {
               );
             })}
             <div style={{ fontSize: 12, color: "var(--txt-faint)", marginTop: 6, lineHeight: 1.5 }}>
-              Custom parties you create in the Persona Manager will appear here automatically.
-              (Note: the engine currently runs the deliberation flow for democrat & republican
-              only.)
+              Custom parties you create in the Persona Manager will appear here automatically —
+              every caucus you toggle on deliberates, debates, and votes.
             </div>
           </Card>
 

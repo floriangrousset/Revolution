@@ -12,9 +12,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from src.graphs.main_graph import run_negotiation
+from src.graphs.main_graph import compute_result, run_negotiation
 from src.state.types import AgentMessage, Vote
-from src.voting.consensus import determine_final_result
 
 from . import db
 from .events import Event, broadcaster
@@ -30,6 +29,8 @@ PHASE_MAP: dict[str, str] = {
     "assistant_research": "assistant_research",
     "synthesis": "synthesis",
     "cross_party_debate": "cross_party_debate",
+    "markup": "markup",
+    "markup_debate": "markup_debate",
     # The engine sometimes emits ad-hoc phases — fall through unchanged.
 }
 
@@ -206,10 +207,12 @@ def _serialize_message(msg: AgentMessage, *, turn_index: int) -> dict[str, Any]:
     }
 
 
-def _serialize_vote(vote: Vote, *, previous: dict[str, str]) -> dict[str, Any]:
+def _serialize_vote(
+    vote: Vote, *, previous: dict[str, str], weight: float | None = None
+) -> dict[str, Any]:
     prior = previous.get(vote.agent_id)
     changed = prior is not None and prior != vote.vote
-    return {
+    payload = {
         "agent": vote.agent_id,
         "name": vote.agent_name,
         "party": vote.party,
@@ -220,6 +223,9 @@ def _serialize_vote(vote: Vote, *, previous: dict[str, str]) -> dict[str, Any]:
         "from": prior if changed else None,
         "amendments": list(vote.amendments or []),
     }
+    if weight is not None:
+        payload["weight"] = weight
+    return payload
 
 
 def create_debate_record(
@@ -230,15 +236,31 @@ def create_debate_record(
     model: str | None = None,
     temperature: float | None = None,
     parties: list[str] | None = None,
+    passage_rule: str | None = None,
+    use_seat_weights: bool = False,
+    markup_rounds: int = 0,
 ) -> dict[str, Any]:
     """Create the on-disk debate record (status=pending). Returns the record."""
-    from src.config import get_default_model, get_default_temperature
+    from src.config import get_default_model, get_default_passage_rule, get_default_temperature
 
     debate_id = f"deb_{uuid.uuid4().hex[:8]}"
     resolved_model = model or get_default_model()
     resolved_temp = temperature if temperature is not None else get_default_temperature()
     created_at = _now()
     title_resolved = title or _summarize_title(proposal)
+    resolved_parties = parties or ["democrat", "republican"]
+    # Snapshot the registry's configured seat counts at creation time so the
+    # debate stays reproducible even if the registry changes later.
+    seat_config: dict[str, int] | None = None
+    if use_seat_weights:
+        registry = {p["id"]: p for p in db.list_parties()}
+        # `is not None` — an explicitly configured 0 means "this caucus's
+        # ballots carry no weight", which is different from unconfigured.
+        seat_config = {
+            pid: registry[pid]["voting_seats"]
+            for pid in resolved_parties
+            if registry.get(pid, {}).get("voting_seats") is not None
+        }
     record: dict[str, Any] = {
         "id": debate_id,
         "title": title_resolved,
@@ -247,7 +269,11 @@ def create_debate_record(
             "max_rounds": max_rounds,
             "model": resolved_model,
             "temperature": resolved_temp,
-            "parties": parties or ["democrat", "republican"],
+            "parties": resolved_parties,
+            "passage_rule": passage_rule or get_default_passage_rule(),
+            "use_seat_weights": use_seat_weights,
+            "seat_config": seat_config,
+            "markup_rounds": markup_rounds,
         },
         "status": "pending",
         "result": None,
@@ -329,6 +355,12 @@ async def run_debate(debate_id: str) -> None:
                 ),
             )
             broadcaster.publish(debate_id, Event.turn_end(payload))
+            if payload["phase"] == "markup":
+                # The clerk's markup turn doubles as the amendment event.
+                broadcaster.publish(
+                    debate_id,
+                    Event.amendment({"phase": "markup", "content": item.content}),
+                )
             asyncio.run_coroutine_threadsafe(append_transcript_line(payload), loop)
         elif isinstance(item, Vote):
             # Capture the first vote per agent — this is the "initial position"
@@ -352,6 +384,9 @@ async def run_debate(debate_id: str) -> None:
             model=cfg.get("model"),
             temperature=cfg.get("temperature"),
             parties=cfg.get("parties"),
+            passage_rule=cfg.get("passage_rule"),
+            seat_config=cfg.get("seat_config"),
+            markup_rounds=int(cfg.get("markup_rounds") or 0),
         )
     except Exception as e:
         log.exception("debate %s failed", debate_id)
@@ -365,14 +400,17 @@ async def run_debate(debate_id: str) -> None:
 
     # Pull per-party votes from the dict-keyed state, falling back to the
     # legacy republican_votes / democrat_votes fields when the engine ran in
-    # back-compat mode.
+    # back-compat mode. (Used for the roll-call payload below.)
     votes_by_party: dict[str, list[Vote]] = dict(result.get("votes_by_party") or {})
     if not votes_by_party.get("republican") and result.get("republican_votes"):
         votes_by_party["republican"] = list(result["republican_votes"])
     if not votes_by_party.get("democrat") and result.get("democrat_votes"):
         votes_by_party["democrat"] = list(result["democrat_votes"])
 
-    voting = determine_final_result(votes_by_party)
+    # Prefer the VotingResult the resolution node already computed; fall back
+    # to the SAME canonical tally helper the graph uses (rules + quorum +
+    # seat weights come off the state) so the two can never diverge.
+    voting = result.get("voting_result") or compute_result(result)
     final_status = "passed" if voting.passed else "rejected"
     if result.get("final_result") == "amended":
         final_status = "amended"
@@ -384,23 +422,46 @@ async def run_debate(debate_id: str) -> None:
     votes_payload: list[dict[str, Any]] = []
     party_order = cfg.get("parties") or list(votes_by_party.keys())
     for party in party_order:
+        party_weight = voting.weights_by_party.get(party) if voting.weighted else None
         for v in votes_by_party.get(party, []):
-            votes_payload.append(_serialize_vote(v, previous=first_votes))
+            votes_payload.append(
+                _serialize_vote(v, previous=first_votes, weight=party_weight)
+            )
     _atomic_write_json(
         _debate_dir(debate_id) / "votes.json",
         {"votes": votes_payload},
     )
 
     amendments = result.get("amendments_proposed") or []
-    amendments_payload = [
-        {
-            "id": f"am{i + 1}",
-            "text": text,
-            "by": None,
-            "status": "proposed",
-        }
-        for i, text in enumerate(amendments)
-    ]
+    sponsors: dict[str, list[str]] = result.get("amendment_sponsors") or {}
+    applied: list[str] = result.get("applied_amendments") or []
+    # Amendments applied during markup may no longer appear in the final
+    # vote's proposals — list them first so the record shows them.
+    ordered = list(applied) + [a for a in amendments if a not in applied]
+    amendments_payload: list[dict[str, Any]] = []
+    for i, text in enumerate(ordered):
+        sponsor_ids = sponsors.get(text) or []
+        amendments_payload.append(
+            {
+                "id": f"am{i + 1}",
+                "text": text,
+                "by": sponsor_ids[0] if sponsor_ids else None,
+                "sponsors": sponsor_ids,
+                "status": "incorporated" if text in applied else "proposed",
+            }
+        )
+
+    # Version history when markup rewrote the motion.
+    final_proposal = result.get("proposal")
+    if final_proposal is not None and getattr(final_proposal, "current_version", 1) > 1:
+        record["proposal_versions"] = [
+            {"version": 1, "text": record["proposal"], "applied_amendments": []},
+            {
+                "version": final_proposal.current_version,
+                "text": final_proposal.description,
+                "applied_amendments": applied,
+            },
+        ]
     _atomic_write_json(
         _debate_dir(debate_id) / "amendments.json",
         {"amendments": amendments_payload},
@@ -415,6 +476,15 @@ async def run_debate(debate_id: str) -> None:
     record["status"] = final_status
     record["result"] = final_status
     record["tally"] = tally
+    record["voting"] = {
+        "rule": voting.rule,
+        "required": voting.required,
+        "margin": voting.margin,
+        "bipartisan": voting.bipartisan,
+        "weighted": voting.weighted,
+        "weighted_support": voting.weighted_support,
+        "weighted_oppose": voting.weighted_oppose,
+    }
     record["completed_at"] = _now()
     record["duration_s"] = duration
     _atomic_write_json(_debate_dir(debate_id) / "debate.json", record)

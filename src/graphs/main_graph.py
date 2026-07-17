@@ -4,8 +4,35 @@ from langgraph.graph import StateGraph, START, END
 
 from ..state.types import NegotiationState, Proposal, AgentMessage, Vote
 from .party_graph import run_party_deliberation
-from .nodes import cross_party_debate, conduct_voting, initial_voting
-from ..voting.consensus import determine_final_result
+from .nodes import cross_party_debate, conduct_voting, initial_voting, markup, markup_debate
+from ..voting.consensus import VotingResult, VotingRules, determine_final_result
+
+
+def compute_result(state: NegotiationState) -> VotingResult:
+    """Tally the current votes under this debate's rules and weights.
+
+    The single canonical tally path: used by the post-vote routing decision,
+    the resolution node, and as the fallback in `server/engine.py` /
+    `src/main.py` for result states that predate `voting_result` — so every
+    consumer applies identical passage rules, quorum, and seat weights.
+    """
+    votes_by_party: dict[str, list[Vote]] = dict(state.get("votes_by_party") or {})
+    # Back-fill from the legacy per-party fields if the dict is sparse.
+    if not votes_by_party.get("republican") and state.get("republican_votes"):
+        votes_by_party["republican"] = list(state["republican_votes"])
+    if not votes_by_party.get("democrat") and state.get("democrat_votes"):
+        votes_by_party["democrat"] = list(state["democrat_votes"])
+
+    rules = VotingRules(
+        rule=state.get("passage_rule") or "majority",
+        quorum=state.get("quorum"),
+    )
+    return determine_final_result(
+        votes_by_party,
+        rules=rules,
+        seat_weights=state.get("seat_config") or None,
+    )
+
 
 # Default participating parties for the CLI and any test caller that hasn't
 # migrated to passing `parties=...` explicitly.
@@ -131,30 +158,62 @@ def build_main_graph(
 
     async def resolution_node(state: NegotiationState) -> dict:
         """Calculate and announce final result."""
-        votes_by_party: dict[str, list[Vote]] = dict(state.get("votes_by_party") or {})
-        # Back-fill from the legacy per-party fields if the dict is sparse.
-        if not votes_by_party.get("republican") and state.get("republican_votes"):
-            votes_by_party["republican"] = list(state["republican_votes"])
-        if not votes_by_party.get("democrat") and state.get("democrat_votes"):
-            votes_by_party["democrat"] = list(state["democrat_votes"])
+        result = compute_result(state)
+        if result.passed:
+            # A bill that passed after at least one markup cycle passed "as
+            # amended" — surface that as its own outcome.
+            amended = state["proposal"].current_version > 1
+            final_result = "amended" if amended else "passed"
+        else:
+            final_result = "rejected"
 
-        result = determine_final_result(votes_by_party)
-        final_result = "passed" if result.passed else "rejected"
+        if display_callback:
+            rule_note = "" if result.rule == "majority" else f" [{result.rule}, {result.required} needed]"
+            display_callback(AgentMessage(
+                agent_id="system",
+                agent_name="System",
+                party="neutral",
+                role="system",
+                content=f"FINAL RESULT: {final_result.upper()} ({result.margin}){rule_note}",
+                phase="resolution"
+            ))
 
+        return {
+            "final_result": final_result,
+            "voting_result": result,
+            "phase": "resolution"
+        }
+
+    async def markup_node(state: NegotiationState) -> dict:
+        """Apply the top amendment to the failed proposal."""
+        return await markup(state, display_callback)
+
+    async def markup_debate_node(state: NegotiationState) -> dict:
+        """Heads-only exchange on the amended text before the re-vote."""
         if display_callback:
             display_callback(AgentMessage(
                 agent_id="system",
                 agent_name="System",
                 party="neutral",
                 role="system",
-                content=f"FINAL RESULT: {final_result.upper()} ({result.margin})",
-                phase="resolution"
+                content="Debating the motion as amended (party heads only)...",
+                phase="markup_debate",
             ))
+        return await markup_debate(state, display_callback)
 
-        return {
-            "final_result": final_result,
-            "phase": "resolution"
-        }
+    def after_final_vote_decision(state: NegotiationState) -> Literal["resolve", "markup"]:
+        """After the final vote: run a markup cycle iff the vote FAILED,
+        un-applied amendments remain on the docket, and markup rounds remain.
+        A bill that passed never gets marked up — markup here is rescue, not
+        embellishment."""
+        if state.get("markup_rounds_done", 0) >= state.get("max_markup_rounds", 0):
+            return "resolve"
+        applied = set(state.get("applied_amendments") or [])
+        if not any(a not in applied for a in state.get("amendments_proposed") or []):
+            return "resolve"
+        if compute_result(state).passed:
+            return "resolve"
+        return "markup"
 
     def after_debate_decision(state: NegotiationState) -> Literal["continue", "vote"]:
         """After a debate round, continue if rounds remain, otherwise vote."""
@@ -177,6 +236,8 @@ def build_main_graph(
     builder.add_node("initial_voting", initial_voting_node)
     builder.add_node("cross_party_debate", debate_node)
     builder.add_node("final_voting", voting_node)
+    builder.add_node("markup", markup_node)
+    builder.add_node("markup_debate", markup_debate_node)
     builder.add_node("resolution", resolution_node)
 
     # Define flow: receive → deliberation1 → deliberation2 → … → initial_voting
@@ -198,7 +259,18 @@ def build_main_graph(
         }
     )
 
-    builder.add_edge("final_voting", "resolution")
+    # After the final vote: resolve, or (failed + amendments + rounds left)
+    # run one bounded markup cycle and re-vote.
+    builder.add_conditional_edges(
+        "final_voting",
+        after_final_vote_decision,
+        {
+            "resolve": "resolution",
+            "markup": "markup",
+        }
+    )
+    builder.add_edge("markup", "markup_debate")
+    builder.add_edge("markup_debate", "final_voting")
     builder.add_edge("resolution", END)
 
     return builder.compile()
@@ -211,6 +283,10 @@ async def run_negotiation(
     model: Optional[str] = None,
     temperature: Optional[float] = None,
     parties: Optional[list[str]] = None,
+    passage_rule: Optional[str] = None,
+    quorum: Optional[float] = None,
+    seat_config: Optional[dict[str, int]] = None,
+    markup_rounds: int = 0,
 ) -> NegotiationState:
     """Run a full negotiation on a proposal.
 
@@ -222,11 +298,22 @@ async def run_negotiation(
         temperature: Optional temperature in [0, 1] to override the engine default.
         parties: Optional explicit party-id list, in seating order. Defaults to
             ["democrat", "republican"] for back-compat with the CLI and tests.
+        passage_rule: "majority" (default), "three_fifths", or "two_thirds".
+            Falls back to the settings-store default when omitted.
+        quorum: Optional fraction of ALL voters who must cast a decisive
+            (non-abstain) vote for the motion to be valid. Falls back to the
+            settings-store `voting.quorum` (None = no quorum).
+        seat_config: Optional party id → seat count map for seat-weighted
+            voting. Omitted/empty = one agent, one vote (unweighted).
+        markup_rounds: How many markup cycles a FAILED vote may trigger
+            (top-sponsored amendment incorporated, heads-only debate,
+            re-vote). 0 = record amendments but never apply them.
 
     Returns:
         Final NegotiationState with results
     """
     from .nodes import set_model_overrides
+    from ..config import get_default_passage_rule, get_default_quorum
     set_model_overrides(model=model, temperature=temperature)
 
     party_ids = list(parties) if parties else list(DEFAULT_PARTIES)
@@ -248,8 +335,16 @@ async def run_negotiation(
         "negotiation_round": 0,
         "max_rounds": max_rounds,
         "phase": "proposal_submission",
+        "passage_rule": passage_rule or get_default_passage_rule(),
+        "quorum": quorum if quorum is not None else get_default_quorum(),
+        "seat_config": dict(seat_config) if seat_config else {},
+        "voting_result": None,
         "final_result": None,
         "amendments_proposed": [],
+        "amendment_sponsors": {},
+        "max_markup_rounds": max(0, markup_rounds),
+        "markup_rounds_done": 0,
+        "applied_amendments": [],
     }
 
     result = await graph.ainvoke(initial_state)

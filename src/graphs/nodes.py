@@ -1,11 +1,14 @@
 """Node implementations for the negotiation graphs."""
+import logging
 from contextvars import ContextVar
 from typing import Any, Literal
 from langchain_anthropic import ChatAnthropic
+from langchain_core.exceptions import OutputParserException
 from langchain_core.messages import BaseMessage, SystemMessage, HumanMessage
-from pydantic import SecretStr
+from pydantic import SecretStr, ValidationError
 
 from ..state.types import PartyState, NegotiationState, AgentMessage, Vote
+from ..voting.ballot import VoteBallot
 from ..agents.base import Agent
 from ..agents.loader import load_party_agents
 from ..agents.prompts import (
@@ -15,7 +18,10 @@ from ..agents.prompts import (
     SYNTHESIS_PROMPT,
     DEBATE_OPENING_PROMPT,
     DEBATE_REBUTTAL_PROMPT,
+    AMENDMENT_MARKUP_PROMPT,
 )
+
+log = logging.getLogger(__name__)
 
 # Per-run overrides for model and temperature. The CLI never touches these, so
 # they fall back to env / default. The FastAPI debate runner sets them before
@@ -432,6 +438,160 @@ async def cross_party_debate(state: NegotiationState, display_callback=None) -> 
 
 
 # ============================================================================
+# Markup Nodes (amendment lifecycle)
+# ============================================================================
+
+def select_top_amendment(
+    amendments: list[str], sponsors: dict[str, list[str]]
+) -> str | None:
+    """Pick the amendment to mark up: most sponsors wins, first-seen breaks
+    ties (Python's sort is stable, so equal counts keep list order)."""
+    if not amendments:
+        return None
+    return sorted(amendments, key=lambda a: -len(sponsors.get(a, [])))[0]
+
+
+async def markup(state: NegotiationState, display_callback=None) -> dict[str, Any]:
+    """Incorporate the top-sponsored amendment into the proposal text.
+
+    Runs only when the final vote FAILED, amendments were tabled, and markup
+    rounds remain (see `after_final_vote_decision` in main_graph). Bumps
+    `Proposal.current_version` so resolution can report "amended" when the
+    revised text later passes.
+    """
+    from dataclasses import replace
+
+    proposal = state["proposal"]
+    already_applied = set(state.get("applied_amendments") or [])
+    # Never re-incorporate an amendment from an earlier markup cycle — pick
+    # the top-sponsored one that hasn't been folded into the text yet.
+    candidates = [
+        a for a in (state.get("amendments_proposed") or []) if a not in already_applied
+    ]
+    chosen = select_top_amendment(candidates, state.get("amendment_sponsors") or {})
+    if chosen is None:
+        # Defensive: the decision edge shouldn't route here without amendments.
+        return {"markup_rounds_done": state.get("markup_rounds_done", 0) + 1}
+
+    model = get_model()
+    response = await model.ainvoke([
+        HumanMessage(content=AMENDMENT_MARKUP_PROMPT.format(
+            proposal_description=proposal.description,
+            amendment_text=chosen,
+        )),
+    ])
+    revised_text = _content_text(response).strip()
+
+    if not revised_text or revised_text == proposal.description:
+        # The clerk produced no actual change — burn the round honestly
+        # instead of fabricating a new version that is byte-identical.
+        log.warning("markup produced no textual change; skipping version bump")
+        message = AgentMessage(
+            agent_id="system",
+            agent_name="Chamber Clerk",
+            party="neutral",
+            role="system",
+            content=(
+                "Markup attempted but the revised text was unchanged; the "
+                "motion returns to the floor as written."
+            ),
+            phase="markup",
+        )
+        if display_callback:
+            display_callback(message)
+        return {
+            "markup_rounds_done": state.get("markup_rounds_done", 0) + 1,
+            "messages": [message],
+            "phase": "markup",
+        }
+
+    amended_proposal = replace(
+        proposal,
+        description=revised_text,
+        amendments=list(proposal.amendments) + [chosen],
+        current_version=proposal.current_version + 1,
+        status="debating",
+    )
+    applied = list(state.get("applied_amendments") or []) + [chosen]
+
+    message = AgentMessage(
+        agent_id="system",
+        agent_name="Chamber Clerk",
+        party="neutral",
+        role="system",
+        content=(
+            f"The motion failed and returns for markup. Incorporating the "
+            f"amendment with the most sponsors:\n\n“{chosen}”\n\n"
+            f"Revised proposal (v{amended_proposal.current_version}):\n{revised_text}"
+        ),
+        phase="markup",
+    )
+    if display_callback:
+        display_callback(message)
+
+    return {
+        "proposal": amended_proposal,
+        "applied_amendments": applied,
+        "markup_rounds_done": state.get("markup_rounds_done", 0) + 1,
+        "messages": [message],
+        "phase": "markup",
+    }
+
+
+async def markup_debate(state: NegotiationState, display_callback=None) -> dict[str, Any]:
+    """Abbreviated floor debate on the amended text — party heads only, one
+    exchange each, before the chamber re-votes."""
+    model = get_model()
+    parties = _participating_parties(state)
+
+    applied = state.get("applied_amendments") or []
+    amendment_note = (
+        (
+            "NOTE: The motion FAILED its first vote and has been amended in "
+            f"markup. Amendment incorporated:\n“{applied[-1]}”\n\n"
+            "Speak to the motion AS AMENDED — does the incorporated amendment "
+            "change your caucus's position?\n\n"
+        )
+        if applied
+        else ""
+    )
+
+    debate_messages: list[AgentMessage] = []
+    for party in parties:
+        head = get_party_head(party)
+        debate_so_far = format_discussion(
+            list(state.get("debate_transcript", [])) + debate_messages
+        )
+        prompt = amendment_note + DEBATE_REBUTTAL_PROMPT.format(
+            proposal_description=state["proposal"].description,
+            debate_transcript=debate_so_far,
+            agent_name=head.name,
+        )
+        response = await model.ainvoke([
+            SystemMessage(content=head.get_system_prompt(
+                state["proposal"].description, _position_for(state, party)
+            )),
+            HumanMessage(content=prompt),
+        ])
+        msg = AgentMessage(
+            agent_id=head.id,
+            agent_name=head.name,
+            party=party,
+            role=head.role,
+            content=_content_text(response),
+            phase="markup_debate",
+        )
+        debate_messages.append(msg)
+        if display_callback:
+            display_callback(msg)
+
+    return {
+        "debate_transcript": debate_messages,
+        "phase": "markup_debate",
+    }
+
+
+# ============================================================================
 # Voting Nodes
 # ============================================================================
 
@@ -445,7 +605,6 @@ async def initial_voting(state: NegotiationState, display_callback=None) -> dict
     agents within a party are dispatched in parallel via `asyncio.gather` so the
     extra LLM pass adds ~30–60 s rather than minutes."""
     import asyncio
-    model = get_model()
     parties = _participating_parties(state)
 
     votes_by_party: dict[str, list[Vote]] = {}
@@ -460,16 +619,17 @@ async def initial_voting(state: NegotiationState, display_callback=None) -> dict
                 f"YOUR PARTY'S SYNTHESIZED POSITION:\n{position}\n\n"
                 "Before the cross-party debate begins, give your INITIAL vote based on your "
                 "convictions and your party's stated position alone. You have not yet heard "
-                "the opposing party's argument.\n\n"
+                "the opposing party's argument. No amendments at this stage.\n\n"
                 "Reply in this EXACT format on two lines and nothing else:\n"
                 "VOTE: SUPPORT (or OPPOSE or ABSTAIN)\n"
                 "REASONING: One sentence stating your initial stance.\n"
             )
-            response = await model.ainvoke([
-                SystemMessage(content=agent.get_system_prompt(state["proposal"].description, position)),
-                HumanMessage(content=initial_prompt),
-            ])
-            return parse_vote(_content_text(response), agent, p)
+            return await cast_ballot(
+                agent,
+                p,
+                agent.get_system_prompt(state["proposal"].description, position),
+                initial_prompt,
+            )
 
         cast_votes = await asyncio.gather(*(cast_initial(a) for a in agents))
         votes_by_party[party] = list(cast_votes)
@@ -487,7 +647,6 @@ async def initial_voting(state: NegotiationState, display_callback=None) -> dict
 
 async def conduct_voting(state: NegotiationState, display_callback=None) -> dict[str, Any]:
     """All agents cast their votes."""
-    model = get_model()
     parties = _participating_parties(state)
 
     # Prepare debate summary
@@ -506,12 +665,12 @@ async def conduct_voting(state: NegotiationState, display_callback=None) -> dict
                 f"Party Position:\n{party_position}\n\nDebate:\n{debate_summary}"
             )
 
-            response = await model.ainvoke([
-                SystemMessage(content=agent.get_system_prompt(state["proposal"].description, party_position)),
-                HumanMessage(content=voting_prompt)
-            ])
-
-            vote = parse_vote(_content_text(response), agent, party)
+            vote = await cast_ballot(
+                agent,
+                party,
+                agent.get_system_prompt(state["proposal"].description, party_position),
+                voting_prompt,
+            )
             party_votes.append(vote)
 
             if display_callback:
@@ -519,23 +678,90 @@ async def conduct_voting(state: NegotiationState, display_callback=None) -> dict
 
         votes_by_party[party] = party_votes
 
-    # Aggregate unique amendments across all voters, preserving first-seen order.
-    seen: set[str] = set()
-    aggregated_amendments: list[str] = []
+    # Aggregate unique amendments across all voters, preserving first-seen
+    # order, and record which agents sponsored each one. Seeded from the
+    # existing state so a markup re-vote ACCUMULATES onto the round-1 docket
+    # instead of erasing it (amendments and their sponsors are part of the
+    # permanent record even when the re-vote doesn't re-table them).
+    aggregated_amendments: list[str] = list(state.get("amendments_proposed") or [])
+    amendment_sponsors: dict[str, list[str]] = {
+        text: list(ids) for text, ids in (state.get("amendment_sponsors") or {}).items()
+    }
+    seen: set[str] = set(aggregated_amendments)
     for party in parties:
         for vote in votes_by_party.get(party, []):
             for amendment in vote.amendments:
                 normalized = amendment.strip()
-                if normalized and normalized not in seen:
+                if not normalized:
+                    continue
+                if normalized not in seen:
                     seen.add(normalized)
                     aggregated_amendments.append(normalized)
+                sponsors_for = amendment_sponsors.setdefault(normalized, [])
+                if vote.agent_id not in sponsors_for:
+                    sponsors_for.append(vote.agent_id)
 
     return {
         "votes_by_party": votes_by_party,
         **_legacy_vote_writeback(votes_by_party),
         "amendments_proposed": aggregated_amendments,
+        "amendment_sponsors": amendment_sponsors,
         "phase": "resolution",
     }
+
+
+async def cast_ballot(
+    agent: Agent,
+    party: str,
+    system_prompt: str,
+    human_prompt: str,
+) -> Vote:
+    """Cast one agent's vote, preferring structured output over text parsing.
+
+    Resolution order:
+    1. `with_structured_output(VoteBallot)` — tool-forced schema, one retry
+       on OUTPUT problems (schema/validation garbage) only.
+    2. Plain completion + legacy `parse_vote` (also the path taken by test
+       stubs that don't implement `with_structured_output`).
+
+    Infrastructure errors (API down, key revoked, network) propagate so the
+    debate ends in status='error' instead of a fabricated all-abstain tally.
+    """
+    model = get_model()
+    messages = [
+        SystemMessage(content=system_prompt),
+        HumanMessage(content=human_prompt),
+    ]
+
+    structured_factory = getattr(model, "with_structured_output", None)
+    if structured_factory is not None:
+        for attempt in range(2):
+            try:
+                ballot = await structured_factory(VoteBallot).ainvoke(messages)
+            except (OutputParserException, ValidationError) as e:
+                # The model answered but not in schema — retry, then fall
+                # back to text parsing. Anything else (API/auth/network)
+                # propagates to the runner's error handler.
+                log.warning(
+                    "structured ballot failed for %s (attempt %d): %s",
+                    agent.id, attempt + 1, e,
+                )
+                continue
+            if isinstance(ballot, VoteBallot):
+                amendments = [a.strip() for a in ballot.amendments if a.strip()]
+                return Vote(
+                    agent_id=agent.id,
+                    agent_name=agent.name,
+                    agent_role=agent.role,
+                    party=party,
+                    vote=ballot.vote,
+                    reasoning=ballot.reasoning.strip()[:500]
+                    or f"Voted {ballot.vote} based on party principles",
+                    amendments=amendments,
+                )
+
+    response = await model.ainvoke(messages)
+    return parse_vote(_content_text(response), agent, party)
 
 
 def parse_vote(response: str, agent: Agent, party: str) -> Vote:

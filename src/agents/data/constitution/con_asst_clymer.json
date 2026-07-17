@@ -46,5 +46,7 @@
       "description": "State-by-state ballot-access status tracking used by the party's organizers."
     }
   ],
-  "persona_last_updated": "2026-06-16"
+  "persona_last_updated": "2026-06-16",
+  "image_url": "",
+  "image_attribution": ""
 }

@@ -39,6 +39,23 @@
   "negotiation_posture": "bomb_thrower",
   "constituency": "Bronx/Queens working-class voters of color (NY-14) and the national Justice Democrats / progressive movement that recruited her.",
   "personality_assessment": "",
-  "sources": [],
-  "persona_last_updated": ""
+  "sources": [
+    {
+      "title": "Alexandria Ocasio-Cortez | Congress.gov",
+      "url": "https://www.congress.gov/member/alexandria-ocasio-cortez/O000172",
+      "date": "2026-07-17",
+      "source_type": "government",
+      "description": "Official Library of Congress legislative profile for Representative Alexandria Ocasio-Cortez of New York's 14th District: committee assignments and sponsored legislation."
+    },
+    {
+      "title": "Alexandria Ocasio-Cortez - Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Alexandria_Ocasio-Cortez",
+      "date": "2026-07-17",
+      "source_type": "encyclopedia",
+      "description": "Encyclopedic biography and career overview of Alexandria Ocasio-Cortez."
+    }
+  ],
+  "persona_last_updated": "2026-07-17",
+  "image_url": "/portraits/dem_adv_climate.jpg",
+  "image_attribution": "Official congressional portrait, U.S. Government Publishing Office (public domain)"
 }

@@ -21,7 +21,8 @@ export function DisclaimerBar() {
         <b style={{ color: "var(--gold)" }}>Simulation.</b> All personas are AI approximations of
         public political archetypes for research and modeling —{" "}
         <b style={{ color: "var(--txt-mute)" }}>not</b> the real individuals, and not statements of
-        fact, endorsement, or prediction.
+        fact, endorsement, or prediction. Portraits are official public-domain or freely-licensed
+        photos (see ATTRIBUTIONS) and imply no endorsement.
       </span>
     </div>
   );

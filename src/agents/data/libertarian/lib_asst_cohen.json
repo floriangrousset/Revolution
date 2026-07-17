@@ -46,5 +46,7 @@
       "description": "Cohen's grassroots organization, focused on civil-asset-forfeiture reform and similar local fights."
     }
   ],
-  "persona_last_updated": "2026-06-16"
+  "persona_last_updated": "2026-06-16",
+  "image_url": "/portraits/lib_asst_cohen.jpg",
+  "image_attribution": "Photo: Jo Jorgensen for President, CC BY 4.0, via Wikimedia Commons"
 }

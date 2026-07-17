@@ -8,6 +8,8 @@ from typing import Any
 from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 from fastapi.responses import Response
 
+from src.voting.consensus import PASSAGE_RULES
+
 from .. import db, engine, exporters
 
 router = APIRouter(prefix="/api/debates", tags=["debates"])
@@ -29,9 +31,35 @@ async def create_debate(body: dict[str, Any], background_tasks: BackgroundTasks)
     proposal = (body.get("proposal") or "").strip()
     if not proposal:
         raise HTTPException(status_code=422, detail={"code": "missing_field", "message": "proposal is required"})
-    max_rounds = int(body.get("max_rounds", 2))
+    try:
+        max_rounds = int(body.get("max_rounds", 2))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=422, detail={"code": "invalid", "message": "max_rounds must be an integer"})
     if not 1 <= max_rounds <= 5:
         raise HTTPException(status_code=422, detail={"code": "out_of_range", "message": "max_rounds must be 1..5"})
+
+    passage_rule = body.get("passage_rule")
+    if passage_rule is not None and passage_rule not in PASSAGE_RULES:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "invalid",
+                "message": f"passage_rule must be one of {', '.join(PASSAGE_RULES)}",
+            },
+        )
+
+    try:
+        markup_rounds = int(body.get("markup_rounds", 0) or 0)
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "invalid", "message": "markup_rounds must be an integer"},
+        )
+    if not 0 <= markup_rounds <= 2:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "out_of_range", "message": "markup_rounds must be 0..2"},
+        )
 
     parties = body.get("parties")
     if parties is not None:
@@ -63,6 +91,9 @@ async def create_debate(body: dict[str, Any], background_tasks: BackgroundTasks)
         model=body.get("model"),
         temperature=body.get("temperature"),
         parties=parties,
+        passage_rule=passage_rule,
+        use_seat_weights=bool(body.get("use_seat_weights")),
+        markup_rounds=markup_rounds,
     )
 
     # Kick off the debate as a fire-and-forget asyncio task. This keeps the

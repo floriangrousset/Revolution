@@ -1,5 +1,5 @@
 """State type definitions for the negotiation system."""
-from typing import Annotated, TypedDict, Literal, Optional
+from typing import Annotated, Any, TypedDict, Literal, Optional
 from dataclasses import dataclass, field
 import uuid
 
@@ -134,5 +134,31 @@ class NegotiationState(TypedDict, total=False):
     negotiation_round: int
     max_rounds: int
     phase: str
+    # Passage rule for this debate ("majority" / "three_fifths" / "two_thirds").
+    passage_rule: str
+    # Optional quorum: fraction of all voters who must cast a decisive
+    # (non-abstain) vote for the result to be valid. None = no quorum.
+    quorum: Optional[float]
+    # Optional seat-weighting snapshot: party id → configured seat count,
+    # captured when the debate was created. Empty dict = unweighted.
+    seat_config: dict[str, int]
+    # The full `src.voting.consensus.VotingResult` computed by the resolution
+    # node, so callers (the web engine, CLI) read the tally off the state
+    # instead of recomputing it with possibly-different rules. Typed as Any
+    # because LangGraph evaluates these annotations at runtime and a real
+    # import here would be circular (consensus imports Vote from this module).
+    voting_result: Optional[Any]
     final_result: Optional[Literal["passed", "rejected", "amended"]]
     amendments_proposed: list[str]
+    # Amendment text → ids of the agents whose ballots proposed it. Rebuilt on
+    # every voting pass (plain overwrite, no reducer).
+    amendment_sponsors: dict[str, list[str]]
+    # ---- Markup loop (amendment lifecycle) ----
+    # How many markup cycles this debate may run (0 = amendments are recorded
+    # but never applied — the pre-markup behavior).
+    max_markup_rounds: int
+    # Cycles completed so far. The loop bound lives in state, not config, so
+    # a reducer mistake can't spin the graph forever.
+    markup_rounds_done: int
+    # Amendment texts that have been incorporated into the proposal.
+    applied_amendments: list[str]

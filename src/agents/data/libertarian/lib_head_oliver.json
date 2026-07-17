@@ -47,5 +47,7 @@
       "description": "Biographical background, prior LP candidacies, and 2022 Georgia Senate run."
     }
   ],
-  "persona_last_updated": "2026-06-16"
+  "persona_last_updated": "2026-06-16",
+  "image_url": "/portraits/lib_head_oliver.jpg",
+  "image_attribution": "Photo: Gage Skidmore, CC BY-SA 3.0, via Wikimedia Commons"
 }

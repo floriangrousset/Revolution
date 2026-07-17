@@ -114,6 +114,7 @@ const STATUS_MAP: Record<string, { c: string; l: string }> = {
   pending: { c: "var(--txt-mute)", l: "Pending" },
   amended: { c: "var(--dem-bright)", l: "Amended" },
   accepted: { c: "var(--pass)", l: "Accepted" },
+  incorporated: { c: "var(--pass)", l: "Incorporated" },
   contested: { c: "var(--gold-bright)", l: "Contested" },
   running: { c: "var(--gold-bright)", l: "Running" },
   error: { c: "var(--reject)", l: "Error" },

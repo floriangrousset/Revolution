@@ -1,7 +1,7 @@
 {
   "id": "rep_adv_legal",
   "name": "Senator Ted Cruz",
-  "title": "Senator from Texas, Judiciary Committee",
+  "title": "Senator from Texas, Chairman of the Commerce, Science, and Transportation Committee",
   "party": "republican",
   "role": "advisor",
   "specialty": "Constitutional Law, Judicial Philosophy, and Separation of Powers",
@@ -37,6 +37,23 @@
   "negotiation_posture": "hardliner",
   "constituency": "Texas conservatives and the originalist legal movement (Federalist Society network); also a national primary-voter base watching every floor vote.",
   "personality_assessment": "",
-  "sources": [],
-  "persona_last_updated": ""
+  "sources": [
+    {
+      "title": "Ted Cruz | Congress.gov",
+      "url": "https://www.congress.gov/member/ted-cruz/C001098",
+      "date": "2026-07-17",
+      "source_type": "government",
+      "description": "Official Library of Congress legislative profile for Senator Ted Cruz of Texas: committee assignments and sponsored legislation."
+    },
+    {
+      "title": "Ted Cruz - Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Ted_Cruz",
+      "date": "2026-07-17",
+      "source_type": "encyclopedia",
+      "description": "Encyclopedic biography and career overview of Ted Cruz."
+    }
+  ],
+  "persona_last_updated": "2026-07-17",
+  "image_url": "/portraits/rep_adv_legal.jpg",
+  "image_attribution": "Official congressional portrait, U.S. Government Publishing Office (public domain)"
 }
