@@ -861,18 +861,34 @@ const PHASE_SEQ: { key: string; label: string }[] = [
   { key: "final_voting", label: "Vote" },
 ];
 
-const PHASE_ORDER: { key: string; label: string; expected: (d: DebateDetail) => number }[] = [
-  { key: "intro", label: "Opening Remarks", expected: () => 2 },
-  { key: "advisor_discussion", label: "Caucus Analysis", expected: () => 8 },
-  { key: "assistant_research", label: "Staff Research", expected: () => 12 },
-  { key: "synthesis", label: "Position Synthesis", expected: () => 2 },
+// Per-caucus roster shape for the participating parties, derived from the
+// persona registry so expected-turn estimates track the real chamber (any
+// number of parties, any bench size) instead of the old 11-per-party default.
+interface RosterCounts {
+  parties: number;
+  advisors: number;
+  assistants: number;
+  agents: number;
+  /** Advisors who take the floor in cross-party debate: up to 2 per party. */
+  debateAdvisors: number;
+}
+
+const PHASE_ORDER: {
+  key: string;
+  label: string;
+  expected: (d: DebateDetail, r: RosterCounts) => number;
+}[] = [
+  { key: "intro", label: "Opening Remarks", expected: (_d, r) => r.parties },
+  { key: "advisor_discussion", label: "Caucus Analysis", expected: (_d, r) => r.advisors },
+  { key: "assistant_research", label: "Staff Research", expected: (_d, r) => r.assistants },
+  { key: "synthesis", label: "Position Synthesis", expected: (_d, r) => r.parties },
   {
     key: "cross_party_debate",
     label: "Cross-Party Debate",
-    // Roughly a half-dozen turns per round (party heads + advisors).
-    expected: (d) => Math.max(6, d.config.max_rounds * 4),
+    // Per round: every party head plus up to two advisors per party.
+    expected: (d, r) => Math.max(1, d.config.max_rounds) * (r.parties + r.debateAdvisors),
   },
-  { key: "final_voting", label: "Final Vote", expected: () => 22 },
+  { key: "final_voting", label: "Final Vote", expected: (_d, r) => r.agents },
 ];
 
 function Overview({
@@ -918,6 +934,28 @@ function Overview({
     () => Object.fromEntries(personas.map((p) => [p.id, p])),
     [personas],
   );
+  // Roster of the participating caucuses — drives expected-turn estimates and
+  // the per-party seat denominators for any party mix.
+  const roster = useMemo<RosterCounts>(() => {
+    const seated = personas.filter((p) => partyIds.includes(p.party));
+    const advisorsPerParty = partyIds.map(
+      (id) => seated.filter((p) => p.party === id && p.role === "advisor").length,
+    );
+    return {
+      parties: partyIds.length,
+      advisors: advisorsPerParty.reduce((a, b) => a + b, 0),
+      assistants: seated.filter((p) => p.role === "assistant").length,
+      agents: seated.length,
+      debateAdvisors: advisorsPerParty.reduce((a, b) => a + Math.min(2, b), 0),
+    };
+  }, [personas, partyIds]);
+  const seatCounts = useMemo(
+    () =>
+      Object.fromEntries(
+        partyIds.map((id) => [id, personas.filter((p) => p.party === id).length]),
+      ),
+    [personas, partyIds],
+  );
   const voteMap = useMemo(
     () => Object.fromEntries(votes.map((v) => [v.agent, v.vote])),
     [votes],
@@ -936,14 +974,17 @@ function Overview({
   const daisLabel = PHASE_LABEL[activePhase] || activePhase || "The Floor";
 
   const totalDelivered = speakerTurns.length;
-  const totalExpected =
-    PHASE_ORDER.reduce((acc, ph) => acc + ph.expected(debate), 0) - 22; // expected speech turns (excl. votes)
+  // Expected speech turns — every phase except the vote roll call.
+  const totalExpected = PHASE_ORDER.reduce(
+    (acc, ph) => (ph.key === "final_voting" ? acc : acc + ph.expected(debate, roster)),
+    0,
+  );
   const currentPhase = (() => {
     // The "active" phase is the one whose count is still below expected.
     for (const ph of PHASE_ORDER) {
       if (ph.key === "final_voting") continue;
       const done = (turnsByPhase[ph.key] || []).length;
-      const expected = ph.expected(debate);
+      const expected = ph.expected(debate, roster);
       if (done < expected) return ph.key;
     }
     return "final_voting";
@@ -1001,7 +1042,7 @@ function Overview({
         <StatTile
           label="Votes cast"
           value={`${votes.length}`}
-          sub={`of ${debate.config.parties.length * 11} agents`}
+          sub={`of ${roster.agents} agents`}
           icon="vote"
           accent={votes.length > 0 ? "var(--gold-bright)" : undefined}
         />
@@ -1029,7 +1070,7 @@ function Overview({
             {PHASE_ORDER.map((ph) => {
               const done =
                 ph.key === "final_voting" ? votes.length : (turnsByPhase[ph.key] || []).length;
-              const expected = ph.expected(debate);
+              const expected = ph.expected(debate, roster);
               const active = ph.key === currentPhase && isLive;
               const complete = done >= expected;
               const pct = Math.min(100, Math.round((done / Math.max(1, expected)) * 100));
@@ -1176,7 +1217,7 @@ function Overview({
             <div className="eyebrow" style={{ marginBottom: 14 }}>
               Caucus split
             </div>
-            <CaucusBars votes={votes} debate={debate} />
+            <CaucusBars votes={votes} debate={debate} seatCounts={seatCounts} />
           </Card>
         </div>
       </div>
@@ -1764,7 +1805,15 @@ function StatTile({
   );
 }
 
-function CaucusBars({ votes, debate }: { votes: VoteRecord[]; debate: DebateDetail }) {
+function CaucusBars({
+  votes,
+  debate,
+  seatCounts,
+}: {
+  votes: VoteRecord[];
+  debate: DebateDetail;
+  seatCounts: Record<string, number>;
+}) {
   // Show every party that either (a) was on the launch's `parties` list, or
   // (b) actually cast a vote. This way custom parties surface here too if
   // they ever start voting in the engine.
@@ -1783,7 +1832,7 @@ function CaucusBars({ votes, debate }: { votes: VoteRecord[]; debate: DebateDeta
         const list = votes.filter((v) => v.party === party);
         const t = { support: 0, oppose: 0, abstain: 0 };
         list.forEach((v) => t[v.vote]++);
-        const seated = list.length > 0 ? Math.max(11, list.length) : 11;
+        const seated = seatCounts[party] || list.length || 0;
         return (
           <div key={party}>
             <div
