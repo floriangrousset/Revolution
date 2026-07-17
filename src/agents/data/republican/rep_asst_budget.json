@@ -36,6 +36,21 @@
   "negotiation_posture": "institutionalist",
   "constituency": "South Louisiana suburban conservatives (LA-01) and the House GOP whip operation, which depends on him keeping the conference's spending hawks aligned.",
   "personality_assessment": "",
-  "sources": [],
-  "persona_last_updated": ""
+  "sources": [
+    {
+      "title": "Steve Scalise | Congress.gov",
+      "url": "https://www.congress.gov/member/steve-scalise/S001176",
+      "date": "2026-07-17",
+      "source_type": "government",
+      "description": "Official Library of Congress legislative profile for House Majority Leader Steve Scalise of Louisiana's First District: committee assignments and sponsored legislation."
+    },
+    {
+      "title": "House Majority Leader Steve Scalise",
+      "url": "https://www.majorityleader.gov/",
+      "date": "2026-07-17",
+      "source_type": "government",
+      "description": "Official House Majority Leader site confirming Scalise as the No. 2 House Republican in the 119th Congress."
+    }
+  ],
+  "persona_last_updated": "2026-07-17"
 }

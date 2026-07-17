@@ -1,7 +1,7 @@
 {
   "id": "dem_asst_labor",
   "name": "Senator Bernie Sanders",
-  "title": "Senator from Vermont",
+  "title": "Senator from Vermont (Independent), Ranking Member of the HELP Committee",
   "party": "democrat",
   "role": "assistant",
   "specialty": "Labor Rights, Income Inequality, and Democratic Socialism",
@@ -38,7 +38,22 @@
   ],
   "negotiation_posture": "bomb_thrower",
   "constituency": "Vermont's working-class progressive base and the national democratic-socialist movement of small-donor activists who fund his campaigns.",
-  "personality_assessment": "",
-  "sources": [],
-  "persona_last_updated": ""
+  "personality_assessment": "An Independent who caucuses with the Democrats and never lets the room forget it: he sits in their meetings and takes their committee slots, but answers to his own movement, not the party. Stubborn, monastic in message discipline, and genuinely indifferent to social capital inside the caucus -- which makes him immovable in negotiation but useful as the outer boundary of any deal.",
+  "sources": [
+    {
+      "title": "Bernard Sanders | Congress.gov",
+      "url": "https://www.congress.gov/member/bernard-sanders/S000033",
+      "date": "2026-07-17",
+      "source_type": "government",
+      "description": "Official Library of Congress legislative profile for Senator Bernie Sanders of Vermont: committee assignments and sponsored legislation."
+    },
+    {
+      "title": "Bernie Sanders - Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Bernie_Sanders",
+      "date": "2026-07-17",
+      "source_type": "encyclopedia",
+      "description": "Encyclopedic biography and career overview of Bernie Sanders."
+    }
+  ],
+  "persona_last_updated": "2026-07-17"
 }

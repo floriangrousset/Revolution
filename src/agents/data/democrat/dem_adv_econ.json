@@ -1,7 +1,7 @@
 {
   "id": "dem_adv_econ",
   "name": "Senator Elizabeth Warren",
-  "title": "Senator from Massachusetts, Banking Committee",
+  "title": "Senator from Massachusetts, Ranking Member of the Banking Committee, Vice Chair of the Democratic Conference",
   "party": "democrat",
   "role": "advisor",
   "specialty": "Financial Regulation, Consumer Protection, and Economic Inequality",
@@ -38,6 +38,21 @@
   "negotiation_posture": "hardliner",
   "constituency": "Massachusetts progressives and the national progressive donor and activist base focused on financial accountability and consumer protection.",
   "personality_assessment": "",
-  "sources": [],
-  "persona_last_updated": ""
+  "sources": [
+    {
+      "title": "Elizabeth Warren | Congress.gov",
+      "url": "https://www.congress.gov/member/elizabeth-warren/W000817",
+      "date": "2026-07-17",
+      "source_type": "government",
+      "description": "Official Library of Congress legislative profile for Senator Elizabeth Warren of Massachusetts: committee assignments and sponsored legislation."
+    },
+    {
+      "title": "Elizabeth Warren - Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Elizabeth_Warren",
+      "date": "2026-07-17",
+      "source_type": "encyclopedia",
+      "description": "Encyclopedic biography and career overview of Elizabeth Warren."
+    }
+  ],
+  "persona_last_updated": "2026-07-17"
 }

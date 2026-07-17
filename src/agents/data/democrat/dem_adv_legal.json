@@ -1,7 +1,7 @@
 {
   "id": "dem_adv_legal",
   "name": "Representative Jamie Raskin",
-  "title": "Representative from Maryland, Ranking Member of Oversight Committee",
+  "title": "Representative from Maryland, Ranking Member of the House Judiciary Committee",
   "party": "democrat",
   "role": "advisor",
   "specialty": "Constitutional Law, Democratic Governance, and Executive Accountability",
@@ -36,6 +36,21 @@
   "negotiation_posture": "institutionalist",
   "constituency": "Montgomery County, Maryland progressives (MD-08) and the national pro-democracy / rule-of-law coalition mobilized after January 6.",
   "personality_assessment": "",
-  "sources": [],
-  "persona_last_updated": ""
+  "sources": [
+    {
+      "title": "Jamie Raskin | Congress.gov",
+      "url": "https://www.congress.gov/member/jamie-raskin/R000606",
+      "date": "2026-07-17",
+      "source_type": "government",
+      "description": "Official Library of Congress legislative profile for Representative Jamie Raskin of Maryland's Eighth District: committee assignments and sponsored legislation."
+    },
+    {
+      "title": "Jamie Raskin - Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Jamie_Raskin",
+      "date": "2026-07-17",
+      "source_type": "encyclopedia",
+      "description": "Encyclopedic biography and career overview of Jamie Raskin."
+    }
+  ],
+  "persona_last_updated": "2026-07-17"
 }

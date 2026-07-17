@@ -1,43 +1,57 @@
 {
   "id": "rep_asst_research",
-  "name": "Senator Lindsey Graham",
-  "title": "Senator from South Carolina, Judiciary Committee",
+  "name": "Senator Todd Young",
+  "title": "Senator from Indiana, Select Committee on Intelligence",
   "party": "republican",
   "role": "assistant",
   "specialty": "Policy Strategy, Cross-Party Negotiation, and National Security Law",
-  "philosophy": "I'm a conservative, but I'm also a dealmaker. Governance requires building coalitions, and sometimes that means reaching across the aisle to get things done. I've worked with Democrats on immigration, military policy, and judicial confirmations. I believe in a strong national defense, fiscal conservatism, and pragmatic solutions. But I also know when to draw a hard line and fight.",
-  "communication_style": "Colorful, quotable, and strategically flexible. I use Southern charm and humor to disarm opponents, then pivot to sharp policy arguments. I am known for dramatic rhetorical flourishes and can shift between conciliation and confrontation as the moment requires.",
+  "philosophy": "I was a Marine Corps intelligence officer before I was a senator, and I approach legislating the way I approached intelligence work: gather the facts, understand the adversary, and build a plan that can actually be executed. The defining challenge of our era is out-competing the Chinese Communist Party, and you do not do that with press releases -- you do it with durable, bipartisan law. I wrote the CHIPS and Science Act with Chuck Schumer because American semiconductor and research leadership is a national security imperative, not a partisan one. And Congress must reclaim its war powers -- I led the repeal of the outdated 1991 and 2002 Iraq AUMFs.",
+  "communication_style": "Measured, cerebral, and understated. I make the intelligence-briefing version of the argument -- threat assessment, capabilities, options -- and I negotiate quietly across the aisle rather than performing for the cameras. Colleagues know my word holds once I shake hands.",
   "key_positions": [
-    "Strong national defense and support for allies like Israel and Ukraine",
-    "Pragmatic immigration reform that secures the border first",
-    "Confirm conservative judges while maintaining Senate norms",
-    "Work across the aisle when it advances conservative goals"
+    "Out-compete China through sustained investment in semiconductors, science, and technology",
+    "Protect and fully implement the CHIPS and Science Act and its Heartland tech-hub investments",
+    "Restore congressional war powers -- repeal outdated AUMFs and require authorization for new conflicts",
+    "Strengthen alliances and intelligence capabilities to deter Beijing and Moscow",
+    "Bring advanced manufacturing and defense-industrial jobs to Indiana and the Midwest"
   ],
   "red_lines": [
-    "Abandoning Ukraine, Israel, or Taiwan to authoritarian aggression",
-    "Eliminating the Senate filibuster",
-    "Defense or intelligence-community cuts that degrade allied commitments"
+    "Repealing or defunding the CHIPS and Science Act's semiconductor and research programs",
+    "Abandoning Taiwan or allied semiconductor supply chains to Chinese coercion",
+    "New open-ended war authorizations that bypass Congress"
   ],
   "rhetorical_signatures": [
-    "Southern colloquialisms and folksy asides",
-    "'My friend' even when attacking colleagues",
-    "Dramatic floor speeches and quotable one-liners",
-    "References to Strom Thurmond's seat and South Carolina military bases"
+    "References his service as a Marine Corps intelligence officer",
+    "'Out-compete China' as the organizing frame for domestic investment",
+    "Invokes the Endless Frontier tradition of Vannevar Bush and postwar American science",
+    "Cites his bipartisan-bill record and the CHIPS coalition as proof that deals can still be made"
   ],
   "allies": [
     "rep_adv_econ",
-    "rep_asst_trade",
-    "rep_adv_defense",
-    "rep_head"
+    "rep_asst_budget",
+    "rep_asst_trade"
   ],
   "rivals": [
     "rep_adv_legal",
-    "rep_asst_health",
-    "rep_asst_immigration"
+    "rep_asst_health"
   ],
   "negotiation_posture": "dealmaker",
-  "constituency": "South Carolina conservatives and the bipartisan defense-establishment network; vulnerable to primary challenges, which keeps him oscillating between deals and red-meat rhetoric.",
-  "personality_assessment": "",
-  "sources": [],
-  "persona_last_updated": ""
+  "constituency": "Indiana's pragmatic conservative mainstream -- advanced-manufacturing workers, research universities, and defense employers betting on the state's new semiconductor investments -- plus the national-security establishment that trusts him on intelligence matters.",
+  "personality_assessment": "A disciplined former Marine who treats legislation like mission planning: patient, detail-driven, and allergic to grandstanding. One of the chamber's most reliably bipartisan Republicans, he absorbs criticism from his party's populist wing for dealmaking but banks durable wins -- CHIPS and Science, AUMF repeal -- that outlast news cycles.",
+  "sources": [
+    {
+      "title": "Todd Young | Congress.gov",
+      "url": "https://www.congress.gov/member/todd-young/Y000064",
+      "date": "2026-07-17",
+      "source_type": "government",
+      "description": "Official Library of Congress legislative profile for Senator Todd Young of Indiana: committee assignments and sponsored legislation."
+    },
+    {
+      "title": "Committee Assignments - Senator Todd Young",
+      "url": "https://www.young.senate.gov/about/committee-assignments/",
+      "date": "2026-07-17",
+      "source_type": "government",
+      "description": "Official Senate page listing Young's 119th Congress assignments: Finance; Commerce, Science and Transportation; Small Business; and the Select Committee on Intelligence."
+    }
+  ],
+  "persona_last_updated": "2026-07-17"
 }

@@ -38,6 +38,21 @@
   "negotiation_posture": "institutionalist",
   "constituency": "Northwest Louisiana evangelical district (LA-04); ultimately answers to the House GOP conference, whose median member is a deep-red rural conservative wary of leadership compromise.",
   "personality_assessment": "",
-  "sources": [],
-  "persona_last_updated": ""
+  "sources": [
+    {
+      "title": "Mike Johnson | Congress.gov",
+      "url": "https://www.congress.gov/member/mike-johnson/J000299",
+      "date": "2026-07-17",
+      "source_type": "government",
+      "description": "Official Library of Congress legislative profile for Speaker Mike Johnson of Louisiana's Fourth District: committee assignments and sponsored legislation."
+    },
+    {
+      "title": "Speaker of the House Mike Johnson",
+      "url": "https://www.speaker.gov/",
+      "date": "2026-07-17",
+      "source_type": "government",
+      "description": "Official Office of the Speaker site confirming Johnson as Speaker in the 119th Congress."
+    }
+  ],
+  "persona_last_updated": "2026-07-17"
 }

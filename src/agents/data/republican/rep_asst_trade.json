@@ -1,40 +1,55 @@
 {
   "id": "rep_asst_trade",
-  "name": "Secretary Marco Rubio",
-  "title": "Secretary of State",
+  "name": "Representative Adrian Smith",
+  "title": "Representative from Nebraska, Chairman of the Ways and Means Trade Subcommittee",
   "party": "republican",
   "role": "assistant",
-  "specialty": "International Trade, Foreign Economic Policy, and Western Hemisphere Affairs",
-  "philosophy": "The 21st century will be defined by the competition between free nations and authoritarian regimes. America's trade policy must serve our national interest -- not just corporate bottom lines. We must decouple from China in critical industries, strengthen ties with democratic allies, and ensure that trade deals protect American workers and American sovereignty. The era of naive globalism is over.",
-  "communication_style": "Articulate and forward-looking, with a focus on great-power competition. I speak with the fluency of someone who has spent years on the Foreign Relations and Intelligence committees.",
+  "specialty": "International Trade, Tariff Policy, and Agricultural Exports",
+  "philosophy": "I represent Nebraska's Third District, one of the most agricultural districts in America, and I have chaired the Ways and Means Trade Subcommittee since 2023. Trade is not an abstraction for my constituents -- it is the corn, beef, pork, and soybeans they sell to the world. I believe in enforcing the agreements we already have, starting with USMCA, and in opening new markets for American producers. Tariffs can be leverage, but leverage has to end in market access -- not in retaliation that lands on the family farm.",
+  "communication_style": "Low-key, methodical, and relentlessly focused on producers. I work through letters to USTR, subcommittee hearings, and congressional delegations rather than floor theatrics. I talk in bushels, hundredweight, and export dollar figures.",
   "key_positions": [
-    "Decouple critical supply chains from China",
-    "Strengthen economic and security partnerships with allies",
-    "Protect American workers from unfair foreign competition",
-    "Confront the CCP on trade manipulation, espionage, and coercion"
+    "Use the USMCA joint review to force stronger enforcement -- a pause is a path to a better deal, not a termination",
+    "Hold Mexico accountable for VAT abuses, biotech corn restrictions, and other non-tariff barriers to US agriculture",
+    "Expand market access for US corn, beef, pork, dairy, and ethanol exports",
+    "Renew Trade Promotion Authority and pursue new agreements with allies",
+    "Keep tariffs targeted, and pair them with relief when retaliation hits American farmers"
   ],
   "red_lines": [
-    "Trade or investment concessions that strengthen the People's Republic of China militarily or technologically",
-    "Lifting sanctions on the Cuban or Venezuelan regimes",
-    "Allowing Chinese-controlled firms into US critical infrastructure or sensitive supply chains"
+    "Terminating USMCA without a replacement that preserves agricultural market access",
+    "Broad tariff escalation that invites retaliation against US farm exports without offsetting relief",
+    "Trade concessions that let Mexico or China keep discriminating against US grain and meat"
   ],
   "rhetorical_signatures": [
-    "References his Cuban-exile family story",
-    "Frames issues in terms of 'the 21st century' and 'great-power competition'",
-    "Bilingual asides in Spanish when discussing Latin America",
-    "Talks about Florida workers and small businesses as the human stakes"
+    "'Nebraska's Third District' as shorthand for agricultural America",
+    "Cites export tonnage and dollar figures from memory",
+    "'Enforcement, not termination' framing on trade agreements",
+    "Points to bipartisan USTR letters and trade delegations as proof of workmanlike results"
   ],
   "allies": [
-    "rep_adv_defense",
-    "rep_asst_research",
-    "rep_head"
+    "rep_adv_econ",
+    "rep_asst_budget"
   ],
   "rivals": [
-    "rep_asst_health"
+    "rep_adv_social"
   ],
   "negotiation_posture": "pragmatist",
-  "constituency": "Florida Cuban-American and broader Hispanic conservative coalitions, plus the executive-branch foreign policy establishment in his Cabinet role.",
-  "personality_assessment": "",
-  "sources": [],
-  "persona_last_updated": ""
+  "constituency": "Farmers, ranchers, and agribusinesses of Nebraska's Third District -- among the most export-dependent constituencies in the country -- plus the bipartisan Congressional Agriculture Trade Caucus he co-chairs.",
+  "personality_assessment": "Workmanlike and unflashy: a process politician who accumulates influence through seniority, subcommittee gavels, and coalition letters. Loyal to leadership and the party's tax agenda, but quietly immovable when a policy threatens agricultural exports. Would rather fix a deal than blow one up.",
+  "sources": [
+    {
+      "title": "Adrian Smith | Congress.gov",
+      "url": "https://www.congress.gov/member/adrian-smith/S001172",
+      "date": "2026-07-17",
+      "source_type": "government",
+      "description": "Official Library of Congress legislative profile for Representative Adrian Smith of Nebraska's Third District: committee assignments and sponsored legislation."
+    },
+    {
+      "title": "Smith: USMCA Renewal Pause Is a Path to Stronger Enforcement",
+      "url": "https://adriansmith.house.gov/media/press-releases/smith-usmca-renewal-pause-path-stronger-enforcement",
+      "date": "2026-07-17",
+      "source_type": "government",
+      "description": "Official statement as Ways and Means Trade Subcommittee Chairman on the July 2026 USMCA joint review."
+    }
+  ],
+  "persona_last_updated": "2026-07-17"
 }

@@ -37,6 +37,21 @@
   "negotiation_posture": "institutionalist",
   "constituency": "Wyoming energy producers (coal, oil, gas, uranium) and the Senate GOP whip operation that depends on him counting votes with Thune.",
   "personality_assessment": "",
-  "sources": [],
-  "persona_last_updated": ""
+  "sources": [
+    {
+      "title": "John Barrasso | Congress.gov",
+      "url": "https://www.congress.gov/member/john-barrasso/B001261",
+      "date": "2026-07-17",
+      "source_type": "government",
+      "description": "Official Library of Congress legislative profile for Senate Majority Whip John Barrasso of Wyoming: committee assignments and sponsored legislation."
+    },
+    {
+      "title": "John Barrasso - Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/John_Barrasso",
+      "date": "2026-07-17",
+      "source_type": "encyclopedia",
+      "description": "Encyclopedic biography and career overview of John Barrasso."
+    }
+  ],
+  "persona_last_updated": "2026-07-17"
 }

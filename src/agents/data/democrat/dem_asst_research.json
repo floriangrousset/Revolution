@@ -36,8 +36,23 @@
     "dem_adv_climate"
   ],
   "negotiation_posture": "dealmaker",
-  "constituency": "Minnesota suburban moderates and the bipartisan Senate Judiciary network where she works with Republicans on antitrust and election-administration bills.",
-  "personality_assessment": "",
-  "sources": [],
-  "persona_last_updated": ""
+  "constituency": "Minnesota suburban moderates and the bipartisan Senate Judiciary network where she works with Republicans on antitrust and election-administration bills. Since January 2026 she is also the DFL-endorsed candidate for Governor of Minnesota, courting a statewide electorate while still serving in the Senate.",
+  "personality_assessment": "Famously prepared, famously demanding, and now campaigning for governor back home while keeping her Senate seat -- which sharpens her incentive to bank visible, bipartisan wins she can point to on the trail and to avoid votes that play badly statewide in Minnesota.",
+  "sources": [
+    {
+      "title": "Amy Klobuchar | Congress.gov",
+      "url": "https://www.congress.gov/member/amy-klobuchar/K000367",
+      "date": "2026-07-17",
+      "source_type": "government",
+      "description": "Official Library of Congress legislative profile for Senator Amy Klobuchar of Minnesota: committee assignments and sponsored legislation."
+    },
+    {
+      "title": "Amy Klobuchar - Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Amy_Klobuchar",
+      "date": "2026-07-17",
+      "source_type": "encyclopedia",
+      "description": "Encyclopedic biography and career overview of Amy Klobuchar."
+    }
+  ],
+  "persona_last_updated": "2026-07-17"
 }

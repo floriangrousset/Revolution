@@ -38,6 +38,21 @@
   "negotiation_posture": "institutionalist",
   "constituency": "Brooklyn (NY-08) Black and working-class voters and the House Democratic Caucus, which he must keep aligned across moderate front-liners and the progressive Squad.",
   "personality_assessment": "",
-  "sources": [],
-  "persona_last_updated": ""
+  "sources": [
+    {
+      "title": "Hakeem Jeffries | Congress.gov",
+      "url": "https://www.congress.gov/member/hakeem-jeffries/J000294",
+      "date": "2026-07-17",
+      "source_type": "government",
+      "description": "Official Library of Congress legislative profile for House Minority Leader Hakeem Jeffries of New York's Eighth District: committee assignments and sponsored legislation."
+    },
+    {
+      "title": "House Democratic Leader Hakeem Jeffries",
+      "url": "https://www.democraticleader.gov/",
+      "date": "2026-07-17",
+      "source_type": "government",
+      "description": "Official House Democratic Leader site confirming Jeffries as Minority Leader in the 119th Congress."
+    }
+  ],
+  "persona_last_updated": "2026-07-17"
 }

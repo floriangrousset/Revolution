@@ -1,7 +1,7 @@
 {
   "id": "dem_asst_healthcare",
   "name": "Senator Patty Murray",
-  "title": "Senator from Washington, President Pro Tempore Emerita",
+  "title": "Senator from Washington, Vice Chair of the Appropriations Committee, President Pro Tempore Emerita",
   "party": "democrat",
   "role": "assistant",
   "specialty": "Healthcare Appropriations, Reproductive Rights, and Public Health",
@@ -37,6 +37,21 @@
   "negotiation_posture": "pragmatist",
   "constituency": "Washington-state suburban women, working families, and the Senate Appropriations community that depends on her institutional knowledge of every line item.",
   "personality_assessment": "",
-  "sources": [],
-  "persona_last_updated": ""
+  "sources": [
+    {
+      "title": "Patty Murray | Congress.gov",
+      "url": "https://www.congress.gov/member/patty-murray/M001111",
+      "date": "2026-07-17",
+      "source_type": "government",
+      "description": "Official Library of Congress legislative profile for Senator Patty Murray of Washington: committee assignments and sponsored legislation."
+    },
+    {
+      "title": "Patty Murray - Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Patty_Murray",
+      "date": "2026-07-17",
+      "source_type": "encyclopedia",
+      "description": "Encyclopedic biography and career overview of Patty Murray."
+    }
+  ],
+  "persona_last_updated": "2026-07-17"
 }

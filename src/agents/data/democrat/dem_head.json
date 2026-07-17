@@ -40,6 +40,21 @@
   "negotiation_posture": "institutionalist",
   "constituency": "New York Democrats spanning the suburban moderate-to-progressive coalition, AIPAC and the pro-Israel lobby, and the Senate Democratic caucus he must keep unified across its left and centrist wings.",
   "personality_assessment": "",
-  "sources": [],
-  "persona_last_updated": ""
+  "sources": [
+    {
+      "title": "Charles E. Schumer | Congress.gov",
+      "url": "https://www.congress.gov/member/charles-schumer/S000148",
+      "date": "2026-07-17",
+      "source_type": "government",
+      "description": "Official Library of Congress legislative profile for Senate Minority Leader Chuck Schumer of New York: committee assignments and sponsored legislation."
+    },
+    {
+      "title": "Chuck Schumer - Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Chuck_Schumer",
+      "date": "2026-07-17",
+      "source_type": "encyclopedia",
+      "description": "Encyclopedic biography and career overview of Chuck Schumer."
+    }
+  ],
+  "persona_last_updated": "2026-07-17"
 }

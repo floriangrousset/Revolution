@@ -38,6 +38,21 @@
   "negotiation_posture": "dealmaker",
   "constituency": "Rural South Dakota agricultural producers and the broader Senate GOP conference, where Thune's job is to count to 60 and keep institutionalists, populists, and libertarians moving in the same direction.",
   "personality_assessment": "",
-  "sources": [],
-  "persona_last_updated": ""
+  "sources": [
+    {
+      "title": "John Thune | Congress.gov",
+      "url": "https://www.congress.gov/member/john-thune/T000250",
+      "date": "2026-07-17",
+      "source_type": "government",
+      "description": "Official Library of Congress legislative profile for Senate Majority Leader John Thune of South Dakota: committee assignments and sponsored legislation."
+    },
+    {
+      "title": "Senate Majority Leader John Thune",
+      "url": "https://www.republicanleader.senate.gov/",
+      "date": "2026-07-17",
+      "source_type": "government",
+      "description": "Official Senate Republican Leader site confirming Thune as Majority Leader in the 119th Congress."
+    }
+  ],
+  "persona_last_updated": "2026-07-17"
 }

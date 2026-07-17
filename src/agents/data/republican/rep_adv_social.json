@@ -31,11 +31,27 @@
     "rep_adv_defense"
   ],
   "rivals": [
-    "rep_adv_econ"
+    "rep_adv_econ",
+    "rep_asst_trade"
   ],
   "negotiation_posture": "bomb_thrower",
   "constituency": "Missouri populist conservatives -- working-class evangelicals and small-town voters skeptical of both Wall Street and Washington establishments.",
   "personality_assessment": "",
-  "sources": [],
-  "persona_last_updated": ""
+  "sources": [
+    {
+      "title": "Josh Hawley | Congress.gov",
+      "url": "https://www.congress.gov/member/josh-hawley/H001089",
+      "date": "2026-07-17",
+      "source_type": "government",
+      "description": "Official Library of Congress legislative profile for Senator Josh Hawley of Missouri: committee assignments and sponsored legislation."
+    },
+    {
+      "title": "Josh Hawley - Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Josh_Hawley",
+      "date": "2026-07-17",
+      "source_type": "encyclopedia",
+      "description": "Encyclopedic biography and career overview of Josh Hawley."
+    }
+  ],
+  "persona_last_updated": "2026-07-17"
 }

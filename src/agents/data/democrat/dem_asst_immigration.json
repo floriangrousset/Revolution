@@ -37,6 +37,21 @@
   "negotiation_posture": "bomb_thrower",
   "constituency": "Minneapolis (MN-05) progressives, the Somali-American diaspora, and the national Squad / progressive movement focused on human-rights and anti-militarist policy.",
   "personality_assessment": "",
-  "sources": [],
-  "persona_last_updated": ""
+  "sources": [
+    {
+      "title": "Ilhan Omar | Congress.gov",
+      "url": "https://www.congress.gov/member/ilhan-omar/O000173",
+      "date": "2026-07-17",
+      "source_type": "government",
+      "description": "Official Library of Congress legislative profile for Representative Ilhan Omar of Minnesota's Fifth District: committee assignments and sponsored legislation."
+    },
+    {
+      "title": "Ilhan Omar - Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Ilhan_Omar",
+      "date": "2026-07-17",
+      "source_type": "encyclopedia",
+      "description": "Encyclopedic biography and career overview of Ilhan Omar."
+    }
+  ],
+  "persona_last_updated": "2026-07-17"
 }
