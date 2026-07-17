@@ -392,15 +392,19 @@ async def run_debate(debate_id: str) -> None:
     )
 
     amendments = result.get("amendments_proposed") or []
-    amendments_payload = [
-        {
-            "id": f"am{i + 1}",
-            "text": text,
-            "by": None,
-            "status": "proposed",
-        }
-        for i, text in enumerate(amendments)
-    ]
+    sponsors: dict[str, list[str]] = result.get("amendment_sponsors") or {}
+    amendments_payload: list[dict[str, Any]] = []
+    for i, text in enumerate(amendments):
+        sponsor_ids = sponsors.get(text) or []
+        amendments_payload.append(
+            {
+                "id": f"am{i + 1}",
+                "text": text,
+                "by": sponsor_ids[0] if sponsor_ids else None,
+                "sponsors": sponsor_ids,
+                "status": "proposed",
+            }
+        )
     _atomic_write_json(
         _debate_dir(debate_id) / "amendments.json",
         {"amendments": amendments_payload},

@@ -138,6 +138,9 @@ export interface VoteRecord {
 export interface Amendment {
   id: string;
   text: string;
-  by: string;
+  /** Primary sponsor's agent id (first ballot that proposed it), or null. */
+  by: string | null;
+  /** All agent ids whose ballots proposed this amendment. */
+  sponsors?: string[];
   status: "proposed" | "accepted" | "contested" | "rejected";
 }

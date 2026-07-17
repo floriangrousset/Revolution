@@ -118,6 +118,9 @@ async def test_amendments_aggregated_into_state(stub_model):
     assert amendments == ["Add a sunset clause after 5 years."], (
         f"Expected single de-duplicated amendment, got {amendments}"
     )
+    # Every voter proposed the same amendment, so all 22 agents sponsor it.
+    sponsors = result.get("amendment_sponsors", {})
+    assert len(sponsors.get("Add a sunset clause after 5 years.", [])) == 22
 
 
 async def test_negotiation_produces_final_result(stub_model):

@@ -136,3 +136,6 @@ class NegotiationState(TypedDict, total=False):
     phase: str
     final_result: Optional[Literal["passed", "rejected", "amended"]]
     amendments_proposed: list[str]
+    # Amendment text → ids of the agents whose ballots proposed it. Rebuilt on
+    # every voting pass (plain overwrite, no reducer).
+    amendment_sponsors: dict[str, list[str]]

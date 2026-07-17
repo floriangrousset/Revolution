@@ -1,4 +1,5 @@
 """Node implementations for the negotiation graphs."""
+import logging
 from contextvars import ContextVar
 from typing import Any, Literal
 from langchain_anthropic import ChatAnthropic
@@ -6,6 +7,7 @@ from langchain_core.messages import BaseMessage, SystemMessage, HumanMessage
 from pydantic import SecretStr
 
 from ..state.types import PartyState, NegotiationState, AgentMessage, Vote
+from ..voting.ballot import VoteBallot
 from ..agents.base import Agent
 from ..agents.loader import load_party_agents
 from ..agents.prompts import (
@@ -16,6 +18,8 @@ from ..agents.prompts import (
     DEBATE_OPENING_PROMPT,
     DEBATE_REBUTTAL_PROMPT,
 )
+
+log = logging.getLogger(__name__)
 
 # Per-run overrides for model and temperature. The CLI never touches these, so
 # they fall back to env / default. The FastAPI debate runner sets them before
@@ -445,7 +449,6 @@ async def initial_voting(state: NegotiationState, display_callback=None) -> dict
     agents within a party are dispatched in parallel via `asyncio.gather` so the
     extra LLM pass adds ~30–60 s rather than minutes."""
     import asyncio
-    model = get_model()
     parties = _participating_parties(state)
 
     votes_by_party: dict[str, list[Vote]] = {}
@@ -460,16 +463,17 @@ async def initial_voting(state: NegotiationState, display_callback=None) -> dict
                 f"YOUR PARTY'S SYNTHESIZED POSITION:\n{position}\n\n"
                 "Before the cross-party debate begins, give your INITIAL vote based on your "
                 "convictions and your party's stated position alone. You have not yet heard "
-                "the opposing party's argument.\n\n"
+                "the opposing party's argument. No amendments at this stage.\n\n"
                 "Reply in this EXACT format on two lines and nothing else:\n"
                 "VOTE: SUPPORT (or OPPOSE or ABSTAIN)\n"
                 "REASONING: One sentence stating your initial stance.\n"
             )
-            response = await model.ainvoke([
-                SystemMessage(content=agent.get_system_prompt(state["proposal"].description, position)),
-                HumanMessage(content=initial_prompt),
-            ])
-            return parse_vote(_content_text(response), agent, p)
+            return await cast_ballot(
+                agent,
+                p,
+                agent.get_system_prompt(state["proposal"].description, position),
+                initial_prompt,
+            )
 
         cast_votes = await asyncio.gather(*(cast_initial(a) for a in agents))
         votes_by_party[party] = list(cast_votes)
@@ -487,7 +491,6 @@ async def initial_voting(state: NegotiationState, display_callback=None) -> dict
 
 async def conduct_voting(state: NegotiationState, display_callback=None) -> dict[str, Any]:
     """All agents cast their votes."""
-    model = get_model()
     parties = _participating_parties(state)
 
     # Prepare debate summary
@@ -506,12 +509,12 @@ async def conduct_voting(state: NegotiationState, display_callback=None) -> dict
                 f"Party Position:\n{party_position}\n\nDebate:\n{debate_summary}"
             )
 
-            response = await model.ainvoke([
-                SystemMessage(content=agent.get_system_prompt(state["proposal"].description, party_position)),
-                HumanMessage(content=voting_prompt)
-            ])
-
-            vote = parse_vote(_content_text(response), agent, party)
+            vote = await cast_ballot(
+                agent,
+                party,
+                agent.get_system_prompt(state["proposal"].description, party_position),
+                voting_prompt,
+            )
             party_votes.append(vote)
 
             if display_callback:
@@ -519,23 +522,91 @@ async def conduct_voting(state: NegotiationState, display_callback=None) -> dict
 
         votes_by_party[party] = party_votes
 
-    # Aggregate unique amendments across all voters, preserving first-seen order.
+    # Aggregate unique amendments across all voters, preserving first-seen
+    # order, and record which agents sponsored each one.
     seen: set[str] = set()
     aggregated_amendments: list[str] = []
+    amendment_sponsors: dict[str, list[str]] = {}
     for party in parties:
         for vote in votes_by_party.get(party, []):
             for amendment in vote.amendments:
                 normalized = amendment.strip()
-                if normalized and normalized not in seen:
+                if not normalized:
+                    continue
+                if normalized not in seen:
                     seen.add(normalized)
                     aggregated_amendments.append(normalized)
+                    amendment_sponsors[normalized] = []
+                if vote.agent_id not in amendment_sponsors[normalized]:
+                    amendment_sponsors[normalized].append(vote.agent_id)
 
     return {
         "votes_by_party": votes_by_party,
         **_legacy_vote_writeback(votes_by_party),
         "amendments_proposed": aggregated_amendments,
+        "amendment_sponsors": amendment_sponsors,
         "phase": "resolution",
     }
+
+
+async def cast_ballot(
+    agent: Agent,
+    party: str,
+    system_prompt: str,
+    human_prompt: str,
+) -> Vote:
+    """Cast one agent's vote, preferring structured output over text parsing.
+
+    Resolution order:
+    1. `with_structured_output(VoteBallot)` — tool-forced schema, one retry.
+    2. Plain completion + legacy `parse_vote` (also the path taken by test
+       stubs that don't implement `with_structured_output`).
+    3. Explicit abstain marked `[unparsed]` — never a silent default.
+    """
+    model = get_model()
+    messages = [
+        SystemMessage(content=system_prompt),
+        HumanMessage(content=human_prompt),
+    ]
+
+    structured_factory = getattr(model, "with_structured_output", None)
+    if structured_factory is not None:
+        for attempt in range(2):
+            try:
+                ballot = await structured_factory(VoteBallot).ainvoke(messages)
+            except Exception as e:  # noqa: BLE001 — any model/parse error → retry, then fall back
+                log.warning(
+                    "structured ballot failed for %s (attempt %d): %s",
+                    agent.id, attempt + 1, e,
+                )
+                continue
+            if isinstance(ballot, VoteBallot):
+                amendments = [a.strip() for a in ballot.amendments if a.strip()]
+                return Vote(
+                    agent_id=agent.id,
+                    agent_name=agent.name,
+                    agent_role=agent.role,
+                    party=party,
+                    vote=ballot.vote,
+                    reasoning=ballot.reasoning.strip()[:500]
+                    or f"Voted {ballot.vote} based on party principles",
+                    amendments=amendments,
+                )
+
+    try:
+        response = await model.ainvoke(messages)
+        return parse_vote(_content_text(response), agent, party)
+    except Exception as e:  # noqa: BLE001 — record the failure instead of crashing the vote
+        log.warning("fallback ballot failed for %s: %s", agent.id, e)
+        return Vote(
+            agent_id=agent.id,
+            agent_name=agent.name,
+            agent_role=agent.role,
+            party=party,
+            vote="abstain",
+            reasoning=f"[unparsed] Ballot could not be read: {e}"[:500],
+            amendments=[],
+        )
 
 
 def parse_vote(response: str, agent: Agent, party: str) -> Vote:

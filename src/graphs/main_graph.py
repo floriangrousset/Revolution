@@ -250,6 +250,7 @@ async def run_negotiation(
         "phase": "proposal_submission",
         "final_result": None,
         "amendments_proposed": [],
+        "amendment_sponsors": {},
     }
 
     result = await graph.ainvoke(initial_state)
