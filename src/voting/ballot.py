@@ -7,7 +7,7 @@ as a fallback parse path in `src.graphs.nodes.cast_ballot`.
 """
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class VoteBallot(BaseModel):
@@ -20,7 +20,17 @@ class VoteBallot(BaseModel):
     amendments: list[str] = Field(
         default_factory=list,
         description=(
-            "Amendments you would require for your support, each as its own "
-            "short clause. Empty list if none."
+            "Amendments you would require for your support — only your most "
+            "important ones (at most 3), each as its own short clause. Empty "
+            "list if none."
         ),
     )
+
+    @field_validator("amendments", mode="before")
+    @classmethod
+    def _cap_amendments(cls, v: object) -> object:
+        # Keep verbose models from flooding the docket — a soft cap so an
+        # over-long list truncates instead of failing validation.
+        if isinstance(v, list):
+            return v[:3]
+        return v
